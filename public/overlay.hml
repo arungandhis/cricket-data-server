@@ -1,16 +1,13 @@
-<h1 id="score">Loading...</h1>
-
 <script>
 
-const ws = new WebSocket("wss://cricket-data-server.onrender.com")
+const socket = new WebSocket("ws://localhost:8080")
 
-ws.onmessage = function(e){
+socket.onmessage = function(event){
 
- const data = JSON.parse(e.data)
-
- document.getElementById("score").innerHTML =
- data.score + " ("+data.over+")"
+ document.getElementById("commentary").innerText = event.data
 
 }
 
 </script>
+
+<div id="commentary"></div>
