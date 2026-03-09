@@ -1,143 +1,58 @@
-const express = require("express");
-const cors = require("cors");
+const express = require("express")
+const cors = require("cors")
+const http = require("http")
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const {generateBall,score} = require("./matchEngine")
+const {initWebsocket} = require("./websocket")
 
-const PORT = process.env.PORT || 3000;
+const app = express()
+app.use(cors())
+app.use(express.json())
+app.use(express.static("public"))
 
-let selectedMatch = null;
-let commentaryFeed = [];
+const server = http.createServer(app)
+const wss = initWebsocket(server)
 
-let score = {
- team1:"India",
- team2:"Australia",
- runs:0,
- wickets:0,
- overs:0,
- balls:0
-};
+let engineRunning=false
 
-let engineRunning = false;
-let interval = null;
+function broadcast(data){
 
-function generateBallEvent(){
-
- const events = [
-  {type:"dot",text:"Good length delivery, defended"},
-  {type:"1",text:"Worked to mid wicket for a single"},
-  {type:"2",text:"Driven into the gap for two runs"},
-  {type:"4",text:"Beautiful cover drive, FOUR!"},
-  {type:"6",text:"Massive hit over long on, SIX!"},
-  {type:"w",text:"OUT! Clean bowled!"}
- ];
-
- const event = events[Math.floor(Math.random()*events.length)];
-
- score.balls++;
-
- if(score.balls===6){
-  score.overs++;
-  score.balls=0;
- }
-
- if(event.type==="1") score.runs+=1;
- if(event.type==="2") score.runs+=2;
- if(event.type==="4") score.runs+=4;
- if(event.type==="6") score.runs+=6;
- if(event.type==="w") score.wickets++;
-
- return {
-  over: score.overs+"."+score.balls,
-  text:event.text,
-  score: score.runs+"/"+score.wickets
- };
+ wss.clients.forEach(client=>{
+  if(client.readyState===1){
+   client.send(JSON.stringify(data))
+  }
+ })
 
 }
 
-function startEngine(){
+setInterval(()=>{
 
- if(engineRunning) return;
+ if(!engineRunning) return
 
- engineRunning = true;
+ const event = generateBall()
 
- interval = setInterval(()=>{
+ broadcast(event)
 
-  const event = generateBallEvent();
-
-  commentaryFeed.push(event);
-
-  if(commentaryFeed.length>50)
-   commentaryFeed.shift();
-
- },6000);
-
-}
-
-function stopEngine(){
-
- clearInterval(interval);
- engineRunning=false;
-
-}
+},6000)
 
 app.get("/",(req,res)=>{
- res.json({status:"Auto Commentary Engine Running"});
-});
-
-app.get("/matches",(req,res)=>{
- res.json([
-  {id:"4001",team1:"India",team2:"Australia"},
-  {id:"4002",team1:"England",team2:"Pakistan"}
- ]);
-});
-
-app.post("/admin/select-match",(req,res)=>{
-
- selectedMatch = req.body.matchId;
-
- commentaryFeed=[];
- score.runs=0;
- score.wickets=0;
- score.overs=0;
- score.balls=0;
-
- res.json({
-  message:"Match selected",
-  match:selectedMatch
- });
-
-});
+ res.json({status:"Broadcast Pro Running"})
+})
 
 app.post("/admin/start",(req,res)=>{
-
- startEngine();
-
- res.json({message:"Commentary engine started"});
-
-});
+ engineRunning=true
+ res.json({message:"Match started"})
+})
 
 app.post("/admin/stop",(req,res)=>{
+ engineRunning=false
+ res.json({message:"Match stopped"})
+})
 
- stopEngine();
+app.get("/score",(req,res)=>{
+ res.json(score)
+})
 
- res.json({message:"Engine stopped"});
-
-});
-
-app.get("/commentary/live",(req,res)=>{
-
- res.json({
-  match:selectedMatch,
-  score:score,
-  feed:commentaryFeed
- });
-
-});
-
-app.listen(PORT,()=>{
-
- console.log("Auto commentary engine started");
-
-});
+server.listen(process.env.PORT || 3000,()=>{
+ console.log("Broadcast server running")
+})
