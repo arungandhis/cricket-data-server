@@ -9,26 +9,32 @@ app.use(cors())
 const PORT = process.env.PORT || 3000
 
 
-// ROOT
 app.get("/", (req,res)=>{
-  res.json({status:"Cricket server running"})
+ res.json({status:"Cricket server running"})
 })
 
 
-// SCRAPE MATCHES
 app.get("/matches", async (req,res)=>{
 
  try{
 
-  const url = "https://www.cricbuzz.com/cricket-match/live-scores"
-
-  const response = await axios.get(url,{
-   headers:{
-    "User-Agent":"Mozilla/5.0"
+  const response = await axios.get(
+   "https://www.cricbuzz.com/cricket-match/live-scores",
+   {
+    headers:{
+     "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+     "Accept":
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+     "Accept-Language":"en-US,en;q=0.9",
+     "Connection":"keep-alive",
+     "Upgrade-Insecure-Requests":"1"
+    }
    }
-  })
+  )
 
   const html = response.data
+
   const $ = cheerio.load(html)
 
   const matches = []
@@ -57,10 +63,11 @@ app.get("/matches", async (req,res)=>{
 
  }catch(err){
 
-  console.log(err)
+  console.log(err.message)
 
   res.status(500).json({
-   error:"Failed to scrape matches"
+   error:"Failed to fetch matches",
+   message:err.message
   })
 
  }
