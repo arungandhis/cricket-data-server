@@ -2,15 +2,17 @@
 <html>
 
 <head>
-<title>Commentary Overlay</title>
+
+<title>Live Commentary Overlay</title>
 
 <style>
 
 body{
  background:black;
  color:white;
- font-size:30px;
+ font-size:32px;
  text-align:center;
+ font-family:Arial;
 }
 
 </style>
@@ -19,7 +21,11 @@ body{
 
 <body>
 
+<h2>Live Commentary</h2>
+
 <div id="commentary">Waiting for commentary...</div>
+
+<audio id="audio" autoplay></audio>
 
 <script>
 
@@ -27,7 +33,15 @@ const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
 socket.onmessage = function(event){
 
- document.getElementById("commentary").innerText = event.data
+ const text = event.data
+
+ document.getElementById("commentary").innerText = text
+
+ const audio=document.getElementById("audio")
+
+ audio.src="/commentary.mp3?t="+new Date().getTime()
+
+ audio.play()
 
 }
 
