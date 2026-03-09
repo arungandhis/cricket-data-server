@@ -1,0 +1,44 @@
+<html>
+<head>
+<title>Cricket Broadcast Admin</title>
+</head>
+
+<body>
+
+<h2>Broadcast Admin</h2>
+
+<button onclick="selectMatch('3001')">India vs Australia</button>
+<button onclick="selectMatch('3002')">England vs Pakistan</button>
+
+<br><br>
+
+<button onclick="generate()">Generate Commentary</button>
+
+<script>
+
+function selectMatch(id){
+
+ fetch("/admin/select-match",{
+
+ method:"POST",
+
+ headers:{
+ "Content-Type":"application/json"
+ },
+
+ body:JSON.stringify({matchId:id})
+
+ });
+
+}
+
+function generate(){
+
+ fetch("/commentary/generate",{method:"POST"});
+
+}
+
+</script>
+
+</body>
+</html>
