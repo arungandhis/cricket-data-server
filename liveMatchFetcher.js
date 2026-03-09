@@ -4,20 +4,31 @@ async function getMatches(){
 
  try{
 
-  console.log("Fetching matches...")
-
   const matches = await scraper.fetchMatches()
 
-  console.log("Matches found:",matches.length)
+  if(matches && matches.length > 0){
+   return matches
+  }
 
-  return matches
+  // fallback test match
+  return [
+   {
+    match:"TEST MATCH - India vs Australia",
+    matchId:"test-match"
+   }
+  ]
 
  }
  catch(err){
 
-  console.log("Fetcher error:",err.message)
+  console.log("Match fetch error:",err)
 
-  return []
+  return [
+   {
+    match:"TEST MATCH - India vs Australia",
+    matchId:"test-match"
+   }
+  ]
 
  }
 
