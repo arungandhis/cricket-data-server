@@ -1,0 +1,13 @@
+const axios = require("axios");
+
+async function getMatches(){
+
+ return [
+  {id:"3001",team1:"India",team2:"Australia"},
+  {id:"3002",team1:"England",team2:"Pakistan"},
+  {id:"3003",team1:"New Zealand",team2:"South Africa"}
+ ];
+
+}
+
+module.exports = {getMatches};
