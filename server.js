@@ -1,7 +1,6 @@
 const express = require("express")
 const cors = require("cors")
 const axios = require("axios")
-const cheerio = require("cheerio")
 
 const app = express()
 
@@ -9,45 +8,58 @@ app.use(cors())
 
 const PORT = process.env.PORT || 3000
 
-// ROOT ROUTE
+
+// ROOT
 app.get("/", (req, res) => {
-  res.json({
-    message: "Cricket Data Server Running"
-  })
+  res.json({ status: "Cricket Data Server Running" })
 })
 
-// MATCHES ROUTE
+
+// LIVE MATCHES
 app.get("/matches", async (req, res) => {
 
   try {
 
-    const url = "https://www.cricbuzz.com/cricket-match/live-scores"
+    const url = "https://www.cricbuzz.com/api/cricket-match/live-scores"
 
     const response = await axios.get(url, {
       headers: { "User-Agent": "Mozilla/5.0" }
     })
 
-    const $ = cheerio.load(response.data)
-
     const matches = []
 
-    $(".cb-mtch-lst").each((i, el) => {
+    const data = response.data
 
-      const title = $(el).find("h3").text().trim()
+    if (data && data.typeMatches) {
 
-      const score = $(el).find(".cb-scr-wll-chvrn").text().trim()
+      data.typeMatches.forEach(type => {
 
-      const link = $(el).find("a").attr("href")
+        type.seriesMatches.forEach(series => {
 
-      if (title) {
-        matches.push({
-          match: title,
-          score: score,
-          link: link
+          if (series.seriesAdWrapper) {
+
+            series.seriesAdWrapper.matches.forEach(match => {
+
+              const info = match.matchInfo
+              const score = match.matchScore
+
+              matches.push({
+                matchId: info.matchId,
+                team1: info.team1.teamName,
+                team2: info.team2.teamName,
+                status: info.status,
+                score: score
+              })
+
+            })
+
+          }
+
         })
-      }
 
-    })
+      })
+
+    }
 
     res.json(matches)
 
@@ -62,6 +74,7 @@ app.get("/matches", async (req, res) => {
   }
 
 })
+
 
 app.listen(PORT, () => {
   console.log("Server running on port", PORT)
