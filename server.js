@@ -1,80 +1,53 @@
 const express = require("express");
 const cors = require("cors");
 
+const {getMatches} = require("./matchFetcher");
+const {generateEvent} = require("./commentaryEngine");
+
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
-
 let selectedMatch = null;
-let commentaryFeed = [];
+let commentary = [];
 
-app.get("/", (req,res)=>{
- res.json({status:"Cricket Broadcast Server Running"});
+app.get("/",(req,res)=>{
+ res.json({status:"Broadcast Engine Running"});
 });
 
-/* MATCH LIST */
-app.get("/matches",(req,res)=>{
- res.json([
-  {id:"2001",team1:"India",team2:"Australia"},
-  {id:"2002",team1:"England",team2:"Pakistan"},
-  {id:"2003",team1:"New Zealand",team2:"South Africa"}
- ]);
+app.get("/matches",async(req,res)=>{
+ const matches = await getMatches();
+ res.json(matches);
 });
 
-/* ADMIN SELECT MATCH */
 app.post("/admin/select-match",(req,res)=>{
  selectedMatch = req.body.matchId;
-
- commentaryFeed = [];
+ commentary = [];
 
  res.json({
   message:"Match selected",
-  matchId:selectedMatch
+  match:selectedMatch
  });
 });
 
-/* GENERATE COMMENTARY (TEST MODE) */
 app.post("/commentary/generate",(req,res)=>{
 
- const events = [
-  "Bowler starts run up",
-  "Good length delivery",
-  "Batsman drives through covers",
-  "Ball racing to the boundary",
-  "Huge six over long on",
-  "Crowd going wild",
-  "Brilliant yorker",
-  "Wicket! Clean bowled"
- ];
+ const event = generateEvent();
 
- const event = events[Math.floor(Math.random()*events.length)];
+ commentary.push(event);
 
- commentaryFeed.push(event);
-
- res.json({
-  event:event
- });
+ res.json({event:event});
 
 });
 
-/* LIVE COMMENTARY FEED */
 app.get("/commentary/live",(req,res)=>{
  res.json({
   match:selectedMatch,
-  feed:commentaryFeed
+  feed:commentary
  });
 });
 
-/* SERVER STATUS */
-app.get("/status",(req,res)=>{
- res.json({
-  selectedMatch:selectedMatch,
-  commentaryCount:commentaryFeed.length
- });
-});
-
-app.listen(PORT,()=>{
- console.log("Broadcast server running on "+PORT);
+app.listen(process.env.PORT || 3000,()=>{
+ console.log("Broadcast engine started");
 });
