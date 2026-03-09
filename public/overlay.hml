@@ -2,7 +2,7 @@
 
 <script>
 
-const ws = new WebSocket("wss://your-render-app.onrender.com")
+const ws = new WebSocket("wss://cricket-data-server.onrender.com")
 
 ws.onmessage = function(e){
 
