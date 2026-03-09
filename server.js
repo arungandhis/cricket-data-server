@@ -1,7 +1,4 @@
-
 const express = require("express");
-const axios = require("axios");
-const cheerio = require("cheerio");
 const cors = require("cors");
 
 const app = express();
@@ -10,40 +7,40 @@ app.use(cors());
 const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
-  res.send("Cricket Data API Running");
+  res.json({status:"Cricket server running"});
 });
 
-app.get("/matches", async (req, res) => {
-  try {
-    const url = "https://www.cricbuzz.com/cricket-match/live-scores";
+app.get("/matches", (req, res) => {
+  res.json([
+    {
+      id: "1001",
+      team1: "India",
+      team2: "Australia",
+      score: "IND 120/3 (15)"
+    },
+    {
+      id: "1002",
+      team1: "England",
+      team2: "Pakistan",
+      score: "ENG 85/2 (10)"
+    }
+  ]);
+});
 
-    const { data } = await axios.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-      }
-    });
+app.get("/commentary/:id", (req, res) => {
+  const commentary = [
+    "Bowler runs in",
+    "Short ball",
+    "Pulled for four",
+    "Crowd cheering"
+  ];
 
-    const $ = cheerio.load(data);
-
-    let matches = [];
-
-    $(".cb-mtch-lst").each((i, el) => {
-      const title = $(el).find(".cb-lv-scr-mtch-hdr").text().trim();
-      const score = $(el).find(".cb-lv-scrs-col").text().trim();
-
-      matches.push({
-        match: title,
-        score: score
-      });
-    });
-
-    res.json(matches);
-
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch matches" });
-  }
+  res.json({
+    matchId: req.params.id,
+    commentary: commentary
+  });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log("Server running on port " + PORT);
 });
