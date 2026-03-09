@@ -1,16 +1,37 @@
-<h2>Broadcast Admin</h2>
-
-<button onclick="start()">Start Match</button>
-<button onclick="stop()">Stop Match</button>
-
 <script>
+async function loadMatches(){
 
-function start(){
- fetch("/admin/start",{method:"POST"})
+ const res = await fetch("/matches")
+ const matches = await res.json()
+
+ const list = document.getElementById("matches")
+ list.innerHTML=""
+
+ matches.forEach(m=>{
+
+  const btn=document.createElement("button")
+
+  btn.innerText=m.match
+
+  btn.onclick=()=>startMatch(m.matchId)
+
+  list.appendChild(btn)
+
+ })
+
 }
 
-function stop(){
- fetch("/admin/stop",{method:"POST"})
+async function startMatch(matchId){
+
+ await fetch("/start",{
+  method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({matchId})
+ })
+
+ alert("Match started")
+
 }
 
+loadMatches()
 </script>
