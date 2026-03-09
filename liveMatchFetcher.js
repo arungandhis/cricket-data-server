@@ -2,9 +2,24 @@ const scraper = require("./cricbuzzScraper")
 
 async function getMatches(){
 
- const matches = await scraper.fetchMatches()
+ try{
 
- return matches
+  console.log("Fetching matches...")
+
+  const matches = await scraper.fetchMatches()
+
+  console.log("Matches found:",matches.length)
+
+  return matches
+
+ }
+ catch(err){
+
+  console.log("Fetcher error:",err.message)
+
+  return []
+
+ }
 
 }
 
