@@ -1,0 +1,16 @@
+<h1 id="score">Loading...</h1>
+
+<script>
+
+const ws = new WebSocket("wss://your-render-app.onrender.com")
+
+ws.onmessage = function(e){
+
+ const data = JSON.parse(e.data)
+
+ document.getElementById("score").innerHTML =
+ data.score + " ("+data.over+")"
+
+}
+
+</script>
