@@ -1,27 +1,18 @@
-function generateEvent(){
+function generate(event){
 
- const events = [
+ const templates=[
 
- "Bowler begins run up",
+  `Bowler runs in... ${event}`,
+  `What a moment in the match! ${event}`,
+  `Crowd reacting loudly as ${event}`,
+  `That could change the game! ${event}`
 
- "Full delivery outside off",
+ ]
 
- "Batsman drives through covers",
+ const index=Math.floor(Math.random()*templates.length)
 
- "Ball races to boundary",
-
- "Huge six over mid wicket",
-
- "Crowd roaring",
-
- "Brilliant yorker",
-
- "Clean bowled!"
-
- ];
-
- return events[Math.floor(Math.random()*events.length)];
+ return templates[index]
 
 }
 
-module.exports = {generateEvent};
+module.exports={generate}
