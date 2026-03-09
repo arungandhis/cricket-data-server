@@ -52,7 +52,15 @@ app.post("/start",(req,res)=>{
  res.json({status:"Match started"})
 
 })
+app.get("/broadcast/audio",(req,res)=>{
 
+ const path = require("path")
+
+ const file = path.join(__dirname,"public","commentary.mp3")
+
+ res.sendFile(file)
+
+})
 
 // Stop commentary
 app.post("/stop",(req,res)=>{
