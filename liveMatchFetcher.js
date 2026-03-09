@@ -1,13 +1,11 @@
-const axios = require("axios")
+const scraper = require("./cricbuzzScraper")
 
-async function fetchMatches(){
+async function getMatches(){
 
- const response = await axios.get(
- "https://api.cricapi.com/v1/currentMatches?apikey=YOUR_API_KEY"
- )
+ const matches = await scraper.fetchMatches()
 
- return response.data.data
+ return matches
 
 }
 
-module.exports = {fetchMatches}
+module.exports = { getMatches }
