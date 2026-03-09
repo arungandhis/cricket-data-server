@@ -1,6 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Commentary Overlay</title>
+
+<style>
+
+body{
+ background:black;
+ color:white;
+ font-size:30px;
+ text-align:center;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="commentary">Waiting for commentary...</div>
+
 <script>
 
-const socket = new WebSocket("ws://localhost:8080")
+const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
 socket.onmessage = function(event){
 
@@ -10,4 +33,5 @@ socket.onmessage = function(event){
 
 </script>
 
-<div id="commentary"></div>
+</body>
+</html>
