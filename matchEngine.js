@@ -10,7 +10,7 @@ let lastCommentary = ""
 let testIndex = 0
 
 
-// start match engine
+// start commentary engine
 async function start(matchId){
 
  if(running){
@@ -52,13 +52,17 @@ async function runLoop(){
    }
 
    if(!latestEvent){
+
     await sleep(5000)
     continue
+
    }
 
    if(latestEvent === lastCommentary){
+
     await sleep(4000)
     continue
+
    }
 
    lastCommentary = latestEvent
@@ -67,8 +71,21 @@ async function runLoop(){
 
    console.log("AI Commentary:",aiLine)
 
+
+   // MOCK SCOREBOARD DATA
+   const scoreboard = {
+
+    commentary: aiLine,
+    team1: "India 145/3",
+    team2: "Australia",
+    overs: "16.2"
+
+   }
+
+
    // send to overlay
-   websocket.broadcast(aiLine)
+   websocket.send(scoreboard)
+
 
    // generate voice commentary
    voice.speak(aiLine)
@@ -87,7 +104,7 @@ async function runLoop(){
 }
 
 
-// extract newest commentary from scraper
+// extract latest commentary from scraper
 function extractLatestEvent(data){
 
  if(Array.isArray(data) && data.length > 0){
@@ -121,7 +138,9 @@ function getTestCommentary(){
  testIndex++
 
  if(testIndex >= lines.length){
+
   testIndex = 0
+
  }
 
  return line
@@ -129,7 +148,7 @@ function getTestCommentary(){
 }
 
 
-// stop engine
+// stop commentary engine
 function stop(){
 
  running = false
@@ -140,7 +159,7 @@ function stop(){
 }
 
 
-// delay helper
+// helper delay
 function sleep(ms){
 
  return new Promise(resolve => setTimeout(resolve,ms))
