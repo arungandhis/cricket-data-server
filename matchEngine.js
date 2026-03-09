@@ -1,39 +1,28 @@
-let score = {
- runs:0,
- wickets:0,
- overs:0,
- balls:0
-}
+const scraper = require("./cricbuzzScraper")
+const commentaryEngine = require("./commentaryEngine")
 
-function generateBall(){
+let running=false
 
- const events=[
-  {runs:0,text:"Defended back to bowler"},
-  {runs:1,text:"Quick single taken"},
-  {runs:2,text:"Good running, two runs"},
-  {runs:4,text:"Cracking cover drive FOUR"},
-  {runs:6,text:"Huge six into the crowd"},
-  {runs:"W",text:"OUT! Bowled"}
- ]
+async function start(matchId){
 
- const event = events[Math.floor(Math.random()*events.length)]
+ running=true
 
- score.balls++
+ while(running){
 
- if(score.balls===6){
-  score.overs++
-  score.balls=0
- }
+  const data = await scraper.fetchCommentary(matchId)
 
- if(event.runs==="W") score.wickets++
- else score.runs+=event.runs
+  const line = commentaryEngine.generate(data)
 
- return {
-  over:score.overs+"."+score.balls,
-  text:event.text,
-  score:score.runs+"/"+score.wickets
+  console.log("COMMENTARY:",line)
+
+  await new Promise(r=>setTimeout(r,5000))
+
  }
 
 }
 
-module.exports={generateBall,score}
+function stop(){
+ running=false
+}
+
+module.exports = { start, stop }
