@@ -11,11 +11,11 @@ const PORT = process.env.PORT || 3000
 
 // ROOT
 app.get("/", (req, res) => {
-  res.json({ status: "Cricket Data Server Running" })
+  res.json({ message: "Cricket Data Server Running" })
 })
 
 
-// LIVE MATCHES
+// MATCHES
 app.get("/matches", async (req, res) => {
 
   try {
@@ -23,49 +23,54 @@ app.get("/matches", async (req, res) => {
     const url = "https://www.cricbuzz.com/api/cricket-match/live-scores"
 
     const response = await axios.get(url, {
-      headers: { "User-Agent": "Mozilla/5.0" }
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
     })
-
-    const matches = []
 
     const data = response.data
 
-    if (data && data.typeMatches) {
+    const matches = []
 
-      data.typeMatches.forEach(type => {
+    if (!data.typeMatches) {
+      return res.json([])
+    }
 
-        type.seriesMatches.forEach(series => {
+    data.typeMatches.forEach(type => {
 
-          if (series.seriesAdWrapper) {
+      if (!type.seriesMatches) return
 
-            series.seriesAdWrapper.matches.forEach(match => {
+      type.seriesMatches.forEach(series => {
 
-              const info = match.matchInfo
-              const score = match.matchScore
+        if (!series.seriesAdWrapper) return
 
-              matches.push({
-                matchId: info.matchId,
-                team1: info.team1.teamName,
-                team2: info.team2.teamName,
-                status: info.status,
-                score: score
-              })
+        const m = series.seriesAdWrapper.matches
 
-            })
+        if (!m) return
 
-          }
+        m.forEach(match => {
+
+          const info = match.matchInfo
+
+          matches.push({
+            matchId: info.matchId,
+            team1: info.team1.teamName,
+            team2: info.team2.teamName,
+            status: info.status,
+            state: info.state
+          })
 
         })
 
       })
 
-    }
+    })
 
     res.json(matches)
 
-  } catch (err) {
+  } catch (error) {
 
-    console.log(err)
+    console.log(error)
 
     res.status(500).json({
       error: "Failed to fetch matches"
@@ -77,5 +82,5 @@ app.get("/matches", async (req, res) => {
 
 
 app.listen(PORT, () => {
-  console.log("Server running on port", PORT)
+  console.log("Server started on port", PORT)
 })
