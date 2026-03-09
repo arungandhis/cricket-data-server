@@ -1,13 +1,27 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Cricket Broadcast Admin</title>
+</head>
+
+<body>
+
+<h2>Live Matches</h2>
+
 <div id="matches"></div>
 
 <script>
+
 async function loadMatches(){
 
  const res = await fetch("/matches")
+
  const matches = await res.json()
 
- const list = document.getElementById("matches")
- list.innerHTML=""
+ const container=document.getElementById("matches")
+
+ container.innerHTML=""
 
  matches.forEach(m=>{
 
@@ -15,25 +29,41 @@ async function loadMatches(){
 
   btn.innerText=m.match
 
+  btn.style.display="block"
+
+  btn.style.margin="10px"
+
   btn.onclick=()=>startMatch(m.matchId)
 
-  list.appendChild(btn)
+  container.appendChild(btn)
 
  })
 
 }
+
 
 async function startMatch(matchId){
 
  await fetch("/start",{
+
   method:"POST",
-  headers:{"Content-Type":"application/json"},
+
+  headers:{
+   "Content-Type":"application/json"
+  },
+
   body:JSON.stringify({matchId})
+
  })
 
- alert("Match started")
+ alert("Match engine started")
 
 }
 
+
 loadMatches()
+
 </script>
+
+</body>
+</html>
