@@ -1,16 +1,17 @@
 const WebSocket = require("ws")
 
-function initWebsocket(server){
+const wss = new WebSocket.Server({ port: 8080 })
 
- const wss = new WebSocket.Server({server})
+function broadcast(message){
 
- wss.on("connection",(ws)=>{
+ wss.clients.forEach(client=>{
 
-  console.log("Viewer connected")
+  if(client.readyState===WebSocket.OPEN){
+   client.send(message)
+  }
 
  })
 
- return wss
 }
 
-module.exports = {initWebsocket}
+module.exports={broadcast}
