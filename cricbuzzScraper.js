@@ -1,32 +1,40 @@
 const axios = require("axios")
 const cheerio = require("cheerio")
 
-async function getMatches(){
+async function fetchMatches(){
 
- const url="https://www.cricbuzz.com/cricket-match/live-scores"
+ const url = "https://www.cricbuzz.com/cricket-match/live-scores"
 
- const {data}=await axios.get(url,{
-  headers:{ "User-Agent":"Mozilla/5.0" }
+ const response = await axios.get(url,{
+  headers:{
+   "User-Agent":"Mozilla/5.0"
+  }
  })
 
- const $=cheerio.load(data)
+ const html = response.data
+
+ const $ = cheerio.load(html)
 
  const matches=[]
 
- $(".cb-lv-main").each((i,el)=>{
+ $("a[href*='/live-cricket-scores/']").each((i,el)=>{
 
-  const title=$(el).find(".cb-lv-scr-mtch-hdr a").text().trim()
-  const score=$(el).find(".cb-lv-scrs").text().trim()
-  const link=$(el).find(".cb-lv-scr-mtch-hdr a").attr("href")
+  const title=$(el).text().trim()
 
-  if(title){
+  const link=$(el).attr("href")
 
-   const matchId=link.split("/")[2]
+  if(title && title.includes("vs")){
+
+   const parts=link.split("/")
 
    matches.push({
+
     match:title,
-    score:score,
-    matchId:matchId
+
+    matchId:parts[3],
+
+    link:"https://www.cricbuzz.com"+link
+
    })
 
   }
@@ -34,6 +42,34 @@ async function getMatches(){
  })
 
  return matches
+
 }
 
-module.exports={getMatches}
+
+async function fetchCommentary(matchId){
+
+ const url = `https://www.cricbuzz.com/live-cricket-scores/${matchId}`
+
+ const response = await axios.get(url,{
+  headers:{ "User-Agent":"Mozilla/5.0" }
+ })
+
+ const $ = cheerio.load(response.data)
+
+ const commentary=[]
+
+ $(".cb-col.cb-col-100.cb-comm-text").each((i,el)=>{
+
+  commentary.push($(el).text().trim())
+
+ })
+
+ return commentary
+
+}
+
+
+module.exports = {
+ fetchMatches,
+ fetchCommentary
+}
