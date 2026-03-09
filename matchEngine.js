@@ -7,12 +7,14 @@ let running = false
 let currentMatchId = null
 let lastCommentary = ""
 
+let testIndex = 0
 
-// start engine
+
+// start match engine
 async function start(matchId){
 
  if(running){
-  console.log("Engine already running")
+  console.log("Match engine already running")
   return
  }
 
@@ -33,9 +35,21 @@ async function runLoop(){
 
   try{
 
-   const data = await scraper.fetchCommentary(currentMatchId)
+   let latestEvent
 
-   const latestEvent = extractLatestEvent(data)
+   // TEST MODE
+   if(currentMatchId === "test-match"){
+
+    latestEvent = getTestCommentary()
+
+   }
+   else{
+
+    const data = await scraper.fetchCommentary(currentMatchId)
+
+    latestEvent = extractLatestEvent(data)
+
+   }
 
    if(!latestEvent){
     await sleep(5000)
@@ -73,14 +87,44 @@ async function runLoop(){
 }
 
 
-// extract newest commentary
+// extract newest commentary from scraper
 function extractLatestEvent(data){
 
- if(Array.isArray(data) && data.length>0){
+ if(Array.isArray(data) && data.length > 0){
+
   return data[0]
+
  }
 
  return null
+
+}
+
+
+// test commentary generator
+function getTestCommentary(){
+
+ const lines = [
+
+  "Kohli drives beautifully through cover for four",
+  "Bumrah steaming in from the pavilion end",
+  "Huge six over long on!",
+  "What a catch at long off!",
+  "Single taken to deep square leg",
+  "Starc bowls a perfect yorker",
+  "Brilliant cover drive for four runs"
+
+ ]
+
+ const line = lines[testIndex]
+
+ testIndex++
+
+ if(testIndex >= lines.length){
+  testIndex = 0
+ }
+
+ return line
 
 }
 
@@ -99,7 +143,7 @@ function stop(){
 // delay helper
 function sleep(ms){
 
- return new Promise(resolve=>setTimeout(resolve,ms))
+ return new Promise(resolve => setTimeout(resolve,ms))
 
 }
 
