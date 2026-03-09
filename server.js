@@ -6,120 +6,63 @@ const cheerio = require("cheerio")
 const app = express()
 
 app.use(cors())
-app.use(express.json())
 
 const PORT = process.env.PORT || 3000
 
-// Root route
+// ROOT ROUTE
 app.get("/", (req, res) => {
- res.json({
-  status: "Cricbuzz Scraper Server Running"
- })
+  res.json({
+    message: "Cricket Data Server Running"
+  })
 })
 
-/* -------------------------------
-   GET LIVE MATCHES
---------------------------------*/
-
+// MATCHES ROUTE
 app.get("/matches", async (req, res) => {
 
- try {
+  try {
 
-  const url = "https://www.cricbuzz.com/cricket-match/live-scores"
+    const url = "https://www.cricbuzz.com/cricket-match/live-scores"
 
-  const { data } = await axios.get(url, {
-   headers: {
-    "User-Agent": "Mozilla/5.0"
-   }
-  })
-
-  const $ = cheerio.load(data)
-
-  const matches = []
-
-  $(".cb-lv-main").each((i, el) => {
-
-   const title = $(el)
-    .find(".cb-lv-scr-mtch-hdr a")
-    .text()
-    .trim()
-
-   const score = $(el)
-    .find(".cb-lv-scrs")
-    .text()
-    .trim()
-
-   const link = $(el)
-    .find(".cb-lv-scr-mtch-hdr a")
-    .attr("href")
-
-   if (title && link) {
-
-    const matchId = link.split("/")[2]
-
-    matches.push({
-     match: title,
-     score: score,
-     matchId: matchId
+    const response = await axios.get(url, {
+      headers: { "User-Agent": "Mozilla/5.0" }
     })
 
-   }
+    const $ = cheerio.load(response.data)
 
-  })
+    const matches = []
 
-  res.json(matches)
+    $(".cb-mtch-lst").each((i, el) => {
 
- } catch (error) {
+      const title = $(el).find("h3").text().trim()
 
-  console.error(error)
+      const score = $(el).find(".cb-scr-wll-chvrn").text().trim()
 
-  res.status(500).json({
-   error: "Failed to fetch matches"
-  })
+      const link = $(el).find("a").attr("href")
 
- }
+      if (title) {
+        matches.push({
+          match: title,
+          score: score,
+          link: link
+        })
+      }
 
-})
+    })
 
-/* -------------------------------
-   GET MATCH COMMENTARY
---------------------------------*/
+    res.json(matches)
 
-app.get("/commentary/:id", async (req, res) => {
+  } catch (err) {
 
- try {
+    console.log(err)
 
-  const matchId = req.params.id
+    res.status(500).json({
+      error: "Failed to fetch matches"
+    })
 
-  const url =
-   `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`
-
-  const { data } = await axios.get(url, {
-   headers: {
-    "User-Agent": "Mozilla/5.0"
-   }
-  })
-
-  res.json(data)
-
- } catch (error) {
-
-  console.error(error)
-
-  res.status(500).json({
-   error: "Failed to fetch commentary"
-  })
-
- }
+  }
 
 })
-
-/* -------------------------------
-   START SERVER
---------------------------------*/
 
 app.listen(PORT, () => {
-
- console.log("Server running on port " + PORT)
-
+  console.log("Server running on port", PORT)
 })
