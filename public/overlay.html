@@ -3,16 +3,30 @@
 
 <head>
 
-<title>Live Commentary Overlay</title>
+<title>Cricket Broadcast Overlay</title>
 
 <style>
 
 body{
  background:black;
  color:white;
- font-size:32px;
- text-align:center;
  font-family:Arial;
+}
+
+#scoreboard{
+ background:#111;
+ padding:20px;
+ margin-bottom:20px;
+}
+
+.team{
+ font-size:28px;
+}
+
+#commentary{
+ font-size:32px;
+ margin-top:40px;
+ text-align:center;
 }
 
 </style>
@@ -21,9 +35,21 @@ body{
 
 <body>
 
-<h2>Live Commentary</h2>
+<div id="scoreboard">
 
-<div id="commentary">Waiting for commentary...</div>
+<div class="team" id="team1">TEAM A - 0/0</div>
+
+<div class="team" id="team2">TEAM B - 0/0</div>
+
+<div id="overs">Overs: 0.0</div>
+
+</div>
+
+<div id="commentary">
+
+Waiting for commentary...
+
+</div>
 
 <audio id="audio" autoplay></audio>
 
@@ -33,9 +59,13 @@ const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
 socket.onmessage = function(event){
 
- const text = event.data
+ const data = JSON.parse(event.data)
 
- document.getElementById("commentary").innerText = text
+ document.getElementById("commentary").innerText = data.commentary
+
+ document.getElementById("team1").innerText = data.team1
+ document.getElementById("team2").innerText = data.team2
+ document.getElementById("overs").innerText = "Overs: " + data.overs
 
  const audio=document.getElementById("audio")
 
