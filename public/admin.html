@@ -1,0 +1,16 @@
+<h2>Broadcast Admin</h2>
+
+<button onclick="start()">Start Match</button>
+<button onclick="stop()">Stop Match</button>
+
+<script>
+
+function start(){
+ fetch("/admin/start",{method:"POST"})
+}
+
+function stop(){
+ fetch("/admin/stop",{method:"POST"})
+}
+
+</script>
