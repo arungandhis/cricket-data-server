@@ -3,35 +3,47 @@ const cors = require("cors")
 
 const liveMatchFetcher = require("./liveMatchFetcher")
 const matchEngine = require("./matchEngine")
-const commentaryEngine = require("./commentaryEngine")
 
 const app = express()
 
 app.use(cors())
 app.use(express.json())
+
+// serve admin + overlay
 app.use(express.static("public"))
 
 const PORT = process.env.PORT || 3000
 
 
-// Server check
+// Server status
 app.get("/", (req,res)=>{
  res.json({status:"AI Cricket Broadcast Engine Running"})
 })
 
 
-// Get matches
+// Fetch matches
 app.get("/matches", async (req,res)=>{
 
- const matches = await liveMatchFetcher.getMatches()
+ try{
 
- res.json(matches)
+  const matches = await liveMatchFetcher.getMatches()
+
+  res.json(matches)
+
+ }
+ catch(err){
+
+  console.log("MATCH ERROR:",err)
+
+  res.json([])
+
+ }
 
 })
 
 
-// Start match commentary
-app.post("/start", async (req,res)=>{
+// Start commentary
+app.post("/start",(req,res)=>{
 
  const {matchId} = req.body
 
@@ -42,7 +54,7 @@ app.post("/start", async (req,res)=>{
 })
 
 
-// Stop match
+// Stop commentary
 app.post("/stop",(req,res)=>{
 
  matchEngine.stop()
@@ -53,5 +65,5 @@ app.post("/stop",(req,res)=>{
 
 
 app.listen(PORT,()=>{
- console.log("Server running on port "+PORT)
+ console.log("Server running on port",PORT)
 })
