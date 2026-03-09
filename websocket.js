@@ -1,17 +1,37 @@
-const WebSocket = require("ws")
+let broadcastFunction = null
 
-const wss = new WebSocket.Server({ port: 8080 })
 
-function broadcast(message){
+// called by server.js to register broadcast function
+function setBroadcast(fn){
 
- wss.clients.forEach(client=>{
-
-  if(client.readyState===WebSocket.OPEN){
-   client.send(message)
-  }
-
- })
+ broadcastFunction = fn
 
 }
 
-module.exports={broadcast}
+
+// send data to all connected overlay clients
+function send(data){
+
+ if(!broadcastFunction){
+  console.log("Broadcast not initialized")
+  return
+ }
+
+ try{
+
+  broadcastFunction(JSON.stringify(data))
+
+ }
+ catch(err){
+
+  console.log("WebSocket send error:",err)
+
+ }
+
+}
+
+
+module.exports = {
+ setBroadcast,
+ send
+}
