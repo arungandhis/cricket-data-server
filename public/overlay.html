@@ -2,7 +2,6 @@
 <html>
 
 <head>
-
 <title>AI Cricket Broadcast Overlay</title>
 
 <style>
@@ -10,13 +9,18 @@
 body{
  background:black;
  color:white;
- font-family:Arial, Helvetica, sans-serif;
+ font-family:Arial;
  text-align:center;
  padding-top:40px;
 }
 
 #scoreboard{
- font-size:34px;
+ font-size:36px;
+ font-weight:bold;
+ margin-bottom:10px;
+}
+
+#teams{
  margin-bottom:10px;
 }
 
@@ -27,13 +31,13 @@ body{
 
 #players{
  font-size:22px;
- margin-bottom:30px;
+ margin-bottom:25px;
 }
 
 #commentary{
- font-size:28px;
- font-weight:bold;
+ font-size:30px;
  color:yellow;
+ font-weight:bold;
 }
 
 </style>
@@ -44,12 +48,16 @@ body{
 
 <div id="scoreboard">
 
-<div id="team1">Loading...</div>
-<div id="team2"></div>
-
+<div id="teams">
+<span id="team1">Loading...</span>
+vs
+<span id="team2"></span>
 </div>
 
 <div id="overs"></div>
+
+</div>
+
 
 <div id="players">
 
@@ -59,62 +67,69 @@ body{
 
 </div>
 
+
 <div id="commentary">
 Waiting for commentary...
 </div>
 
+
 <audio id="audio" autoplay></audio>
+
 
 <script>
 
 const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
+const team1 = document.getElementById("team1")
+const team2 = document.getElementById("team2")
+const overs = document.getElementById("overs")
+const batsman1 = document.getElementById("batsman1")
+const batsman2 = document.getElementById("batsman2")
+const bowler = document.getElementById("bowler")
+const commentary = document.getElementById("commentary")
 const audio = document.getElementById("audio")
 
-socket.onopen = function(){
- console.log("Overlay connected to server")
+
+socket.onopen = () => {
+ console.log("Overlay connected")
 }
 
-socket.onmessage = function(event){
+
+socket.onmessage = (event) => {
 
  const data = JSON.parse(event.data)
 
- console.log("Received update:",data)
+ console.log("Overlay data:",data)
 
- document.getElementById("team1").innerText =
-  data.team1 || ""
+ // scoreboard
+ team1.innerText = data.team1 ? data.team1 : "Team A"
+ team2.innerText = data.team2 ? data.team2 : "Team B"
 
- document.getElementById("team2").innerText =
-  data.team2 || ""
+ overs.innerText = data.overs ? "Overs: " + data.overs : ""
 
- document.getElementById("overs").innerText =
-  "Overs: " + (data.overs || "")
+ // players
+ batsman1.innerText = data.batsman1 ? data.batsman1 : ""
+ batsman2.innerText = data.batsman2 ? data.batsman2 : ""
+ bowler.innerText = data.bowler ? "Bowler: " + data.bowler : ""
 
- document.getElementById("batsman1").innerText =
-  data.batsman1 || ""
+ // commentary
+ commentary.innerText = data.commentary ? data.commentary : "Waiting for commentary..."
 
- document.getElementById("batsman2").innerText =
-  data.batsman2 || ""
-
- document.getElementById("bowler").innerText =
-  data.bowler ? "Bowler: " + data.bowler : ""
-
- document.getElementById("commentary").innerText =
-  data.commentary || "Waiting for commentary..."
-
- // refresh audio
- audio.src = "/commentary.mp3?t=" + new Date().getTime()
+ // play audio
+ audio.src = "/commentary.mp3?t=" + Date.now()
 
  audio.play().catch(()=>{})
 
 }
 
-socket.onerror = function(err){
- console.log("WebSocket error:",err)
+
+socket.onerror = (err)=>{
+ console.log("WebSocket error",err)
 }
 
-socket.onclose = function(){
- console.log("WebSocket disconnected")
+
+socket.onclose = ()=>{
+ console.log("WebSocket closed")
 }
 
 </script>
