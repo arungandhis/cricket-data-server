@@ -84,7 +84,7 @@ console.log("Launching TEST MATCH engine")
 startTestMatch()
 
 } else {
-
+console.log("Launching LIVE MATCH engine")
 startLiveMatch(match)
 
 }
