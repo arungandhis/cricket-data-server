@@ -28,7 +28,7 @@ async function start(matchId){
 }
 
 
-// main loop
+// main engine loop
 async function runLoop(){
 
  while(running){
@@ -36,49 +36,61 @@ async function runLoop(){
   try{
 
    let latestEvent
+   let scoreData
 
-   // TEST MODE
+
+   // ---------------- TEST MATCH MODE ----------------
    if(currentMatchId === "test-match"){
 
     latestEvent = getTestCommentary()
 
+    scoreData = {
+     team1: "India 145/3",
+     team2: "Australia",
+     overs: "16.2"
+    }
+
    }
    else{
 
+    // get commentary
     const data = await scraper.fetchCommentary(currentMatchId)
 
     latestEvent = extractLatestEvent(data)
 
+    // get scoreboard
+    scoreData = await scraper.fetchScore(currentMatchId)
+
    }
 
-   if(!latestEvent){
 
+   if(!latestEvent){
     await sleep(5000)
     continue
-
    }
 
    if(latestEvent === lastCommentary){
-
     await sleep(4000)
     continue
-
    }
+
 
    lastCommentary = latestEvent
 
+
+   // generate AI commentary
    const aiLine = commentaryEngine.generate(latestEvent)
 
    console.log("AI Commentary:",aiLine)
 
 
-   // MOCK SCOREBOARD DATA
+   // prepare overlay data
    const scoreboard = {
 
     commentary: aiLine,
-    team1: "India 145/3",
-    team2: "Australia",
-    overs: "16.2"
+    team1: scoreData?.team1 || "Team A",
+    team2: scoreData?.team2 || "Team B",
+    overs: scoreData?.overs || "0.0"
 
    }
 
@@ -89,6 +101,7 @@ async function runLoop(){
 
    // generate voice commentary
    voice.speak(aiLine)
+
 
   }
   catch(err){
@@ -104,13 +117,11 @@ async function runLoop(){
 }
 
 
-// extract latest commentary from scraper
+// extract newest commentary from scraper
 function extractLatestEvent(data){
 
  if(Array.isArray(data) && data.length > 0){
-
   return data[0]
-
  }
 
  return null
@@ -118,7 +129,7 @@ function extractLatestEvent(data){
 }
 
 
-// test commentary generator
+// generate test commentary
 function getTestCommentary(){
 
  const lines = [
@@ -138,9 +149,7 @@ function getTestCommentary(){
  testIndex++
 
  if(testIndex >= lines.length){
-
   testIndex = 0
-
  }
 
  return line
@@ -148,7 +157,7 @@ function getTestCommentary(){
 }
 
 
-// stop commentary engine
+// stop engine
 function stop(){
 
  running = false
@@ -159,11 +168,9 @@ function stop(){
 }
 
 
-// helper delay
+// delay helper
 function sleep(ms){
-
  return new Promise(resolve => setTimeout(resolve,ms))
-
 }
 
 
