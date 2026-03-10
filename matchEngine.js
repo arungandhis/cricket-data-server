@@ -1,34 +1,23 @@
-const scraper = require("./cricbuzzScraper")
-const commentaryEngine = require("./commentaryEngine")
-const websocket = require("./websocket")
-const voice = require("./voiceEngine")
+const scraper=require("./cricbuzzScraper")
+const websocket=require("./websocket")
+const commentaryEngine=require("./commentaryEngine")
+const voice=require("./voiceEngine")
 
-let running = false
-let currentMatchId = null
-let lastCommentary = ""
-
-let testIndex = 0
+let running=false
+let currentMatchId=null
+let lastCommentary=""
 
 
-// start commentary engine
 async function start(matchId){
 
- if(running){
-  console.log("Match engine already running")
-  return
- }
-
- running = true
- currentMatchId = matchId
-
- console.log("Starting match engine for:",matchId)
+ running=true
+ currentMatchId=matchId
 
  runLoop()
 
 }
 
 
-// main engine loop
 async function runLoop(){
 
  while(running){
@@ -39,69 +28,69 @@ async function runLoop(){
    let scoreData
 
 
-   // ---------------- TEST MATCH MODE ----------------
-   if(currentMatchId === "test-match"){
+   if(currentMatchId==="test-match"){
 
-    latestEvent = getTestCommentary()
+    latestEvent="Kohli drives beautifully through cover for four"
 
-    scoreData = {
-     team1: "India 145/3",
-     team2: "Australia",
-     overs: "16.2"
+    scoreData={
+     team1:"India 145/3",
+     team2:"Australia",
+     overs:"16.2",
+     batsman1:"Kohli 67 (42)",
+     batsman2:"Rahul 21 (14)",
+     bowler:"Starc"
     }
 
    }
    else{
 
-    // get commentary
-    const data = await scraper.fetchCommentary(currentMatchId)
+    const commentary=await scraper.fetchCommentary(currentMatchId)
 
-    latestEvent = extractLatestEvent(data)
+    latestEvent=commentary[0]
 
-    // get scoreboard
-    scoreData = await scraper.fetchScore(currentMatchId)
+    scoreData=await scraper.fetchScore(currentMatchId)
 
    }
 
 
    if(!latestEvent){
+
     await sleep(5000)
     continue
+
    }
 
-   if(latestEvent === lastCommentary){
+
+   if(latestEvent===lastCommentary){
+
     await sleep(4000)
     continue
-   }
-
-
-   lastCommentary = latestEvent
-
-
-   // generate AI commentary
-   const aiLine = commentaryEngine.generate(latestEvent)
-
-   console.log("AI Commentary:",aiLine)
-
-
-   // prepare overlay data
-   const scoreboard = {
-
-    commentary: aiLine,
-    team1: scoreData?.team1 || "Team A",
-    team2: scoreData?.team2 || "Team B",
-    overs: scoreData?.overs || "0.0"
 
    }
 
 
-   // send to overlay
+   lastCommentary=latestEvent
+
+
+   const aiLine=commentaryEngine.generate(latestEvent)
+
+
+   const scoreboard={
+
+    commentary:aiLine,
+    team1:scoreData?.team1 || "Team A",
+    team2:scoreData?.team2 || "Team B",
+    overs:scoreData?.overs || "0.0",
+    batsman1:scoreData?.batsman1 || "",
+    batsman2:scoreData?.batsman2 || "",
+    bowler:scoreData?.bowler || ""
+
+   }
+
+
    websocket.send(scoreboard)
 
-
-   // generate voice commentary
    voice.speak(aiLine)
-
 
   }
   catch(err){
@@ -117,64 +106,20 @@ async function runLoop(){
 }
 
 
-// extract newest commentary from scraper
-function extractLatestEvent(data){
-
- if(Array.isArray(data) && data.length > 0){
-  return data[0]
- }
-
- return null
-
-}
-
-
-// generate test commentary
-function getTestCommentary(){
-
- const lines = [
-
-  "Kohli drives beautifully through cover for four",
-  "Bumrah steaming in from the pavilion end",
-  "Huge six over long on!",
-  "What a catch at long off!",
-  "Single taken to deep square leg",
-  "Starc bowls a perfect yorker",
-  "Brilliant cover drive for four runs"
-
- ]
-
- const line = lines[testIndex]
-
- testIndex++
-
- if(testIndex >= lines.length){
-  testIndex = 0
- }
-
- return line
-
-}
-
-
-// stop engine
 function stop(){
 
- running = false
- currentMatchId = null
-
- console.log("Match engine stopped")
+ running=false
+ currentMatchId=null
 
 }
 
 
-// delay helper
 function sleep(ms){
- return new Promise(resolve => setTimeout(resolve,ms))
+ return new Promise(resolve=>setTimeout(resolve,ms))
 }
 
 
-module.exports = {
+module.exports={
  start,
  stop
 }
