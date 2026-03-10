@@ -1,17 +1,19 @@
-const scraper=require("./cricbuzzScraper")
-const websocket=require("./websocket")
-const commentaryEngine=require("./commentaryEngine")
-const voice=require("./voiceEngine")
+const scraper = require("./cricbuzzScraper")
+const websocket = require("./websocket")
+const commentaryEngine = require("./commentaryEngine")
+const voice = require("./voiceEngine")
 
-let running=false
-let currentMatchId=null
-let lastCommentary=""
+let running = false
+let currentMatchId = null
+let lastCommentary = ""
 
 
 async function start(matchId){
 
- running=true
- currentMatchId=matchId
+ running = true
+ currentMatchId = matchId
+
+ console.log("Match engine started:",matchId)
 
  runLoop()
 
@@ -28,27 +30,29 @@ async function runLoop(){
    let scoreData
 
 
-   if(currentMatchId==="test-match"){
+   if(currentMatchId === "test-match"){
 
-    latestEvent="Kohli drives beautifully through cover for four"
+    latestEvent = "Kohli drives beautifully through cover for four"
 
-    scoreData={
+    scoreData = {
+
      team1:"India 145/3",
      team2:"Australia",
      overs:"16.2",
      batsman1:"Kohli 67 (42)",
      batsman2:"Rahul 21 (14)",
      bowler:"Starc"
+
     }
 
    }
    else{
 
-    const commentary=await scraper.fetchCommentary(currentMatchId)
+    const commentary = await scraper.fetchCommentary(currentMatchId)
 
-    latestEvent=commentary[0]
+    latestEvent = commentary[0]
 
-    scoreData=await scraper.fetchScore(currentMatchId)
+    scoreData = await scraper.fetchScore(currentMatchId)
 
    }
 
@@ -61,7 +65,7 @@ async function runLoop(){
    }
 
 
-   if(latestEvent===lastCommentary){
+   if(latestEvent === lastCommentary){
 
     await sleep(4000)
     continue
@@ -69,21 +73,21 @@ async function runLoop(){
    }
 
 
-   lastCommentary=latestEvent
+   lastCommentary = latestEvent
 
 
-   const aiLine=commentaryEngine.generate(latestEvent)
+   const aiLine = commentaryEngine.generate(latestEvent)
 
 
-   const scoreboard={
+   const scoreboard = {
 
-    commentary:aiLine,
-    team1:scoreData?.team1 || "Team A",
-    team2:scoreData?.team2 || "Team B",
-    overs:scoreData?.overs || "0.0",
-    batsman1:scoreData?.batsman1 || "",
-    batsman2:scoreData?.batsman2 || "",
-    bowler:scoreData?.bowler || ""
+    commentary: aiLine,
+    team1: scoreData?.team1 || "Team A",
+    team2: scoreData?.team2 || "Team B",
+    overs: scoreData?.overs || "0.0",
+    batsman1: scoreData?.batsman1 || "",
+    batsman2: scoreData?.batsman2 || "",
+    bowler: scoreData?.bowler || ""
 
    }
 
@@ -108,8 +112,8 @@ async function runLoop(){
 
 function stop(){
 
- running=false
- currentMatchId=null
+ running = false
+ currentMatchId = null
 
 }
 
@@ -119,7 +123,7 @@ function sleep(ms){
 }
 
 
-module.exports={
+module.exports = {
  start,
  stop
 }
