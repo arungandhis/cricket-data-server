@@ -1,89 +1,37 @@
 const express = require("express")
-const http = require("http")
-const WebSocket = require("ws")
-const bodyParser = require("body-parser")
 const path = require("path")
+const WebSocket = require("ws")
 
-const scraper = require("./cricbuzzScraper")
-const matchEngine = require("./matchEngine")
-const websocket = require("./websocket")
+const startEngine = require("./matchEngine")
 
 const app = express()
 
-app.use(bodyParser.json())
+// serve overlay
+app.use(express.static("public"))
 
-app.use(express.static(path.join(__dirname,"public")))
-
-const server = http.createServer(app)
-
-const wss = new WebSocket.Server({server})
-
-websocket.init(wss)
-
-
-// GET LIVE MATCHES
-app.get("/matches", async (req,res)=>{
-
- const matches = await scraper.fetchMatches()
-
- matches.unshift({
-  match:"TEST MATCH - India vs Australia",
-  matchId:"test-match"
- })
-
- res.json(matches)
-
+const server = app.listen(process.env.PORT || 3000, () => {
+  console.log("Server running")
 })
 
+// WebSocket server
+const wss = new WebSocket.Server({ server })
 
-// START MATCH
-app.post("/startMatch",(req,res)=>{
-
- const matchId = req.body.matchId
-
- console.log("Starting match:",matchId)
-
- matchEngine.start(matchId)
-
- res.json({status:"started"})
-
+wss.on("connection", (ws) => {
+  console.log("Overlay connected")
 })
 
+// helper to broadcast to all overlays
+function broadcast(data) {
 
-// STOP MATCH
-app.post("/stopMatch",(req,res)=>{
+  wss.clients.forEach(client => {
 
- matchEngine.stop()
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(data))
+    }
 
- res.json({status:"stopped"})
+  })
 
-})
+}
 
-
-// TEST COMMENTARY ENDPOINT
-app.get("/testCommentary",(req,res)=>{
-
- websocket.send({
-
-  commentary:"Kohli smashes that for four!",
-  team1:"India 145/3",
-  team2:"Australia",
-  overs:"16.2",
-  batsman1:"Kohli 67 (42)",
-  batsman2:"Rahul 21 (14)",
-  bowler:"Starc"
-
- })
-
- res.send("sent")
-
-})
-
-
-const PORT = process.env.PORT || 3000
-
-server.listen(PORT,()=>{
-
- console.log("Server running on port",PORT)
-
-})
+// start match engine
+startEngine(broadcast)
