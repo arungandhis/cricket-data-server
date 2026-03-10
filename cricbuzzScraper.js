@@ -1,75 +1,49 @@
 const axios = require("axios")
 const cheerio = require("cheerio")
 
-async function fetchMatches(){
+async function fetchScore(matchId){
 
- const url = "https://www.cricbuzz.com/cricket-match/live-scores"
+ try{
 
- const response = await axios.get(url,{
-  headers:{
-   "User-Agent":"Mozilla/5.0"
-  }
- })
+  const url = "https://www.cricbuzz.com/live-cricket-scores/" + matchId
 
- const html = response.data
+  const response = await axios.get(url,{
+   headers:{
+    "User-Agent":"Mozilla/5.0"
+   }
+  })
 
- const $ = cheerio.load(html)
+  const html=response.data
 
- const matches=[]
+  const $=cheerio.load(html)
 
- $("a[href*='/live-cricket-scores/']").each((i,el)=>{
+  const team1=$(".cb-col.cb-col-100.cb-min-tm.cb-text-gray").first().text().trim()
 
-  const title=$(el).text().trim()
+  const team2=$(".cb-col.cb-col-100.cb-min-tm.cb-text-gray").eq(1).text().trim()
 
-  const link=$(el).attr("href")
+  const score=$(".cb-font-20.text-bold").first().text().trim()
 
-  if(title && title.includes("vs")){
+  const overs=$(".cb-font-12").first().text().trim()
 
-   const parts=link.split("/")
+  return{
 
-   matches.push({
-
-    match:title,
-
-    matchId:parts[3],
-
-    link:"https://www.cricbuzz.com"+link
-
-   })
+   team1:team1+" "+score,
+   team2:team2,
+   overs:overs
 
   }
 
- })
+ }
+ catch(err){
 
- return matches
+  console.log("Score fetch error:",err)
 
-}
+  return null
 
-
-async function fetchCommentary(matchId){
-
- const url = `https://www.cricbuzz.com/live-cricket-scores/${matchId}`
-
- const response = await axios.get(url,{
-  headers:{ "User-Agent":"Mozilla/5.0" }
- })
-
- const $ = cheerio.load(response.data)
-
- const commentary=[]
-
- $(".cb-col.cb-col-100.cb-comm-text").each((i,el)=>{
-
-  commentary.push($(el).text().trim())
-
- })
-
- return commentary
+ }
 
 }
 
-
-module.exports = {
- fetchMatches,
- fetchCommentary
+module.exports={
+ fetchScore
 }
