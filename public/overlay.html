@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 
 <title>Cricket Overlay</title>
@@ -8,32 +7,25 @@
 <style>
 
 body{
-font-family: Arial;
-background: transparent;
+font-family:Arial;
+background:black;
 color:white;
-}
-
-#scoreboard{
-position:absolute;
-top:20px;
-left:20px;
-background:rgba(0,0,0,0.7);
-padding:20px;
-border-radius:10px;
+text-align:center;
 }
 
 #teams{
-font-size:24px;
+font-size:28px;
+margin-top:20px;
 }
 
 #score{
-font-size:20px;
-margin-top:5px;
+font-size:40px;
+margin-top:10px;
 }
 
 #commentary{
-margin-top:10px;
-font-size:18px;
+font-size:22px;
+margin-top:20px;
 }
 
 </style>
@@ -42,34 +34,41 @@ font-size:18px;
 
 <body>
 
-<div id="scoreboard">
+<div id="teams">Waiting for match</div>
 
-<h2 id="teams">Waiting for match...</h2>
-
-<h3 id="score"></h3>
+<div id="score"></div>
 
 <div id="commentary"></div>
 
-</div>
+<audio id="audioPlayer"></audio>
+
 <script>
 
 const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
-socket.onopen = () => {
-console.log("Overlay connected to server")
-}
-
-socket.onmessage = (event) => {
+socket.onmessage = function(event){
 
 const data = JSON.parse(event.data)
 
-console.log("Received:",data)
-
-if(data.type === "commentary"){
-
+if(data.teams){
 document.getElementById("teams").innerText = data.teams
+}
+
+if(data.score){
 document.getElementById("score").innerText = data.score
+}
+
+if(data.commentary){
 document.getElementById("commentary").innerText = data.commentary
+}
+
+if(data.audio){
+
+const player = document.getElementById("audioPlayer")
+
+player.src = data.audio + "?t=" + Date.now()
+
+player.play()
 
 }
 
