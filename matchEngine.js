@@ -1,32 +1,43 @@
 const { broadcastCommentary } = require("./websocket")
-const generateAudio = require("./ttsEngine")
 
-async function startTestMatch(){
+let matchInterval = null
 
-console.log("Starting TEST match")
+function startTestMatch(){
 
-setInterval(async ()=>{
+console.log("TEST MATCH started")
 
-const commentary = generateRandomCommentary()
+if(matchInterval){
+clearInterval(matchInterval)
+}
 
-const score = generateScore()
+matchInterval = setInterval(()=>{
 
-try{
+const commentaryLines = [
 
-const audio = await generateAudio(commentary)
+"Kohli drives through covers for FOUR!",
+"Starc bowls a perfect yorker!",
+"That's smashed for SIX!",
+"Brilliant catch at mid wicket!",
+"Excellent running between the wickets!"
+
+]
+
+const commentary =
+commentaryLines[Math.floor(Math.random()*commentaryLines.length)]
+
+const runs = Math.floor(Math.random()*200)
+const wickets = Math.floor(Math.random()*10)
+const overs = (Math.random()*20).toFixed(1)
+
+const score = runs + "/" + wickets + " (" + overs + ")"
+
+console.log("Broadcasting test commentary:", commentary)
 
 broadcastCommentary({
-teams:"India vs Australia",
-score:score,
-commentary:commentary,
-audio:audio
+teams: "India vs Australia",
+score: score,
+commentary: commentary
 })
-
-}catch(err){
-
-console.log("Audio error:",err.message)
-
-}
 
 },8000)
 
@@ -34,62 +45,33 @@ console.log("Audio error:",err.message)
 
 function startLiveMatch(match){
 
-console.log("Starting live match:",match.match)
+console.log("LIVE MATCH started:", match.match)
 
-setInterval(async ()=>{
-
-const commentary = "Live update from "+match.match
-
-const score = generateScore()
-
-try{
-
-const audio = await generateAudio(commentary)
-
-broadcastCommentary({
-teams:match.match,
-score:score,
-commentary:commentary,
-audio:audio
-})
-
-}catch(err){
-
-console.log("Audio error:",err.message)
-
+if(matchInterval){
+clearInterval(matchInterval)
 }
 
-},10000)
+matchInterval = setInterval(()=>{
 
-}
-
-function generateScore(){
+const commentary = "Live update from " + match.match
 
 const runs = Math.floor(Math.random()*200)
 const wickets = Math.floor(Math.random()*10)
 const overs = (Math.random()*20).toFixed(1)
 
-return runs+"/"+wickets+" ("+overs+")"
+const score = runs + "/" + wickets + " (" + overs + ")"
 
-}
+broadcastCommentary({
+teams: match.match,
+score: score,
+commentary: commentary
+})
 
-function generateRandomCommentary(){
-
-const lines = [
-
-"Kohli drives through covers for FOUR!",
-"Beautiful yorker from Starc!",
-"That's pulled away for SIX!",
-"Edge and taken by the keeper!",
-"Brilliant running between the wickets!"
-
-]
-
-return lines[Math.floor(Math.random()*lines.length)]
+},10000)
 
 }
 
 module.exports = {
-startLiveMatch,
-startTestMatch
+startTestMatch,
+startLiveMatch
 }
