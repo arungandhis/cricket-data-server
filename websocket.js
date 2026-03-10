@@ -1,37 +1,38 @@
-let broadcastFunction = null
+let clients = []
 
+function init(wss){
 
-// called by server.js to register broadcast function
-function setBroadcast(fn){
+ wss.on("connection",(ws)=>{
 
- broadcastFunction = fn
+  console.log("Overlay connected")
+
+  clients.push(ws)
+
+  ws.on("close",()=>{
+
+   clients = clients.filter(c => c !== ws)
+
+  })
+
+ })
 
 }
 
 
-// send data to all connected overlay clients
 function send(data){
 
- if(!broadcastFunction){
-  console.log("Broadcast not initialized")
-  return
- }
+ const msg = JSON.stringify(data)
 
- try{
+ clients.forEach(ws=>{
 
-  broadcastFunction(JSON.stringify(data))
+  ws.send(msg)
 
- }
- catch(err){
-
-  console.log("WebSocket send error:",err)
-
- }
+ })
 
 }
 
 
 module.exports = {
- setBroadcast,
+ init,
  send
 }
