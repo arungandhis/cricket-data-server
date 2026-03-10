@@ -80,7 +80,7 @@ const match = req.body
 console.log("Starting match:", match)
 
 if (match.matchId === "test-match") {
-
+console.log("Launching TEST MATCH engine")
 startTestMatch()
 
 } else {
