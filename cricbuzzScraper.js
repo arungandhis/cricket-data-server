@@ -1,63 +1,59 @@
 const axios = require("axios")
+const cheerio = require("cheerio")
 
-async function scrapeMatches() {
+async function fetchMatches(){
 
-  try {
+try{
 
-    const response = await axios.get(
-      "https://www.cricbuzz.com/cricket-match/live-scores",
-      {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-          "Accept":
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Connection": "keep-alive",
-          "Cache-Control": "no-cache",
-          "Pragma": "no-cache",
-          "Referer": "https://www.google.com/",
-        },
-        timeout: 10000
-      }
-    )
+const response = await axios.get(
+"https://www.cricbuzz.com/cricket-match/live-scores",
+{
+headers:{
+"User-Agent":
+"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+"Accept-Language":"en-US,en;q=0.9"
+}
+}
+)
 
-    const html = response.data
+const html = response.data
 
-    const matches = []
+const $ = cheerio.load(html)
 
-    const regex =
-      /href="\/live-cricket-scores\/(\d+)\/([^"]+)".*?>(.*?)<\/a>/g
+let matches = []
 
-    let match
+$("a").each((i,el)=>{
 
-    while ((match = regex.exec(html)) !== null) {
+const href = $(el).attr("href")
 
-      const matchName = match[3]
-        .replace(/<[^>]*>?/gm, "")
-        .replace(/\s+/g, " ")
-        .trim()
+if(href && href.includes("live-cricket-scores")){
 
-      matches.push({
-        match: matchName,
-        matchId: match[2],
-        link: `https://www.cricbuzz.com/live-cricket-scores/${match[1]}/${match[2]}`
-      })
+const match = $(el).text().trim()
 
-    }
+if(match.length > 5){
 
-    console.log("Matches found:", matches.length)
-
-    return matches
-
-  } catch (error) {
-
-    console.log("Scraper error:", error.message)
-
-    return []
-
-  }
+matches.push({
+match: match,
+matchId: href.split("/")[2],
+link: "https://www.cricbuzz.com"+href
+})
 
 }
 
-module.exports = scrapeMatches
+}
+
+})
+
+return matches.slice(0,10)
+
+}catch(err){
+
+console.log("Scraper error:",err.message)
+
+return []
+
+}
+
+}
+
+module.exports = fetchMatches
