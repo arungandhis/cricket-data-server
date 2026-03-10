@@ -79,7 +79,7 @@ const match = req.body
 
 console.log("Starting match:", match)
 
-if (match.link === "test") {
+if (match.matchId === "test-match") {
 
 startTestMatch()
 
