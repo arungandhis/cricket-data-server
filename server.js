@@ -1,156 +1,89 @@
 const express = require("express")
-const cors = require("cors")
 const http = require("http")
 const WebSocket = require("ws")
-
-const liveMatchFetcher = require("./liveMatchFetcher")
-const matchEngine = require("./matchEngine")
-const autoScheduler = require("./autoScheduler")
-
+const bodyParser = require("body-parser")
 const path = require("path")
+
+const scraper = require("./cricbuzzScraper")
+const matchEngine = require("./matchEngine")
+const websocket = require("./websocket")
 
 const app = express()
 
-app.use(cors())
-app.use(express.json())
+app.use(bodyParser.json())
 
-// serve admin + overlay UI
-app.use(express.static("public"))
-
-const PORT = process.env.PORT || 3000
-
-
-// ---------------- SERVER STATUS ----------------
-
-app.get("/",(req,res)=>{
-
- res.json({
-  status:"AI Cricket Broadcast Engine Running"
- })
-
-})
-
-
-// ---------------- FETCH MATCHES ----------------
-
-app.get("/matches", async (req,res)=>{
-
- try{
-
-  const matches = await liveMatchFetcher.getMatches()
-
-  res.json(matches)
-
- }
- catch(err){
-
-  console.log("Match fetch error:",err)
-
-  res.json([])
-
- }
-
-})
-
-
-// ---------------- START MATCH ----------------
-
-app.post("/start",(req,res)=>{
-
- const {matchId} = req.body
-
- if(!matchId){
-
-  return res.status(400).json({error:"matchId required"})
-
- }
-
- matchEngine.start(matchId)
-
- res.json({
-  status:"Match commentary started",
-  matchId
- })
-
-})
-
-
-// ---------------- STOP MATCH ----------------
-
-app.post("/stop",(req,res)=>{
-
- matchEngine.stop()
-
- res.json({
-  status:"Match stopped"
- })
-
-})
-
-
-// ---------------- AUDIO ENDPOINT ----------------
-
-app.get("/broadcast/audio",(req,res)=>{
-
- const audioFile = path.join(__dirname,"public","commentary.mp3")
-
- res.sendFile(audioFile)
-
-})
-
-
-// ---------------- HTTP SERVER ----------------
+app.use(express.static(path.join(__dirname,"public")))
 
 const server = http.createServer(app)
 
-
-// ---------------- WEBSOCKET ----------------
-
 const wss = new WebSocket.Server({server})
 
-let clients = []
+websocket.init(wss)
 
-wss.on("connection",(ws)=>{
 
- console.log("Overlay connected")
+// GET LIVE MATCHES
+app.get("/matches", async (req,res)=>{
 
- clients.push(ws)
+ const matches = await scraper.fetchMatches()
 
- ws.on("close",()=>{
-
-  clients = clients.filter(c=>c!==ws)
-
+ matches.unshift({
+  match:"TEST MATCH - India vs Australia",
+  matchId:"test-match"
  })
+
+ res.json(matches)
 
 })
 
 
-// broadcast helper
-function broadcast(message){
+// START MATCH
+app.post("/startMatch",(req,res)=>{
 
- clients.forEach(client=>{
+ const matchId = req.body.matchId
 
-  if(client.readyState === WebSocket.OPEN){
+ console.log("Starting match:",matchId)
 
-   client.send(message)
+ matchEngine.start(matchId)
 
-  }
+ res.json({status:"started"})
+
+})
+
+
+// STOP MATCH
+app.post("/stopMatch",(req,res)=>{
+
+ matchEngine.stop()
+
+ res.json({status:"stopped"})
+
+})
+
+
+// TEST COMMENTARY ENDPOINT
+app.get("/testCommentary",(req,res)=>{
+
+ websocket.send({
+
+  commentary:"Kohli smashes that for four!",
+  team1:"India 145/3",
+  team2:"Australia",
+  overs:"16.2",
+  batsman1:"Kohli 67 (42)",
+  batsman2:"Rahul 21 (14)",
+  bowler:"Starc"
 
  })
 
-}
+ res.send("sent")
 
-// make broadcast usable in other files
-require("./websocket").setBroadcast(broadcast)
+})
 
 
-// ---------------- START SERVER ----------------
+const PORT = process.env.PORT || 3000
 
 server.listen(PORT,()=>{
 
  console.log("Server running on port",PORT)
-
- // start auto match scheduler
- autoScheduler.checkMatches()
 
 })
