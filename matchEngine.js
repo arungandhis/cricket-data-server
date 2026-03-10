@@ -1,10 +1,10 @@
-let ball = 0
-
-function startEngine(broadcast){
+function startEngine(broadcast) {
 
   console.log("Match engine started")
 
-  setInterval(()=>{
+  let ball = 0
+
+  setInterval(() => {
 
     ball++
 
@@ -28,7 +28,7 @@ function startEngine(broadcast){
 
     broadcast(payload)
 
-  },5000)
+  }, 5000)
 
 }
 
