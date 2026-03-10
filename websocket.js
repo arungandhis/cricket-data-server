@@ -2,42 +2,42 @@ const WebSocket = require("ws")
 
 let clients = []
 
-function startWebSocket(server) {
+function startWebSocket(server){
 
-  const wss = new WebSocket.Server({ server })
+const wss = new WebSocket.Server({ server })
 
-  wss.on("connection", (ws) => {
+wss.on("connection",(ws)=>{
 
-    console.log("Overlay connected")
+console.log("Overlay connected")
 
-    clients.push(ws)
+clients.push(ws)
 
-    ws.on("close", () => {
+ws.on("close",()=>{
+clients = clients.filter(c => c !== ws)
+})
 
-      clients = clients.filter(c => c !== ws)
-
-    })
-
-  })
+})
 
 }
 
-function broadcastCommentary(data) {
+function broadcastCommentary(data){
 
-  clients.forEach(client => {
+console.log("Broadcasting:",data)
 
-    if (client.readyState === WebSocket.OPEN) {
+clients.forEach(client=>{
 
-      client.send(JSON.stringify({
-        type: "commentary",
-        commentary: data.commentary,
-        score: data.score,
-        teams: data.teams
-      }))
+if(client.readyState === WebSocket.OPEN){
 
-    }
+client.send(JSON.stringify({
+type:"commentary",
+commentary:data.commentary,
+score:data.score,
+teams:data.teams
+}))
 
-  })
+}
+
+})
 
 }
 
