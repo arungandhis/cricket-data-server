@@ -1,4 +1,5 @@
 const axios = require("axios")
+const cheerio = require("cheerio")
 
 // ---------------- FETCH LIVE MATCHES ----------------
 
@@ -6,45 +7,49 @@ async function fetchMatches(){
 
  try{
 
-  const response = await axios.get(
-   "https://www.cricbuzz.com/match-api/v1/liveMatches",
-   {
-    headers:{
-     "User-Agent":"Mozilla/5.0",
-     "Referer":"https://www.cricbuzz.com/",
-     "Accept":"application/json"
-    }
-   }
-  )
+  const url = "https://www.cricbuzz.com/cricket-match/live-scores"
 
-  const data = response.data
+  const response = await axios.get(url,{
+   headers:{
+    "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+   }
+  })
+
+  const html = response.data
+
+  const $ = cheerio.load(html)
 
   const matches = []
 
-  if(data && data.matches){
+  $("a.text-hvr-underline").each((i,el)=>{
 
-   data.matches.forEach(m => {
+   const match = $(el).text().trim()
 
-    const team1 = m.team1?.name || ""
-    const team2 = m.team2?.name || ""
+   const link = $(el).attr("href")
+
+   if(link && link.includes("/live-cricket-scores/")){
+
+    const parts = link.split("/")
+
+    const matchId = parts[2]
 
     matches.push({
-     match: team1 + " vs " + team2,
-     matchId: m.matchId
+     match: match,
+     matchId: matchId
     })
 
-   })
+   }
 
-  }
+  })
 
-  console.log("Live matches found:",matches.length)
+  console.log("Matches scraped:",matches.length)
 
   return matches
 
  }
  catch(err){
 
-  console.log("Match fetch error:",err.message)
+  console.log("Match scrape error:",err.message)
 
   return []
 
@@ -60,38 +65,37 @@ async function fetchCommentary(matchId){
 
  try{
 
-  const response = await axios.get(
-   `https://www.cricbuzz.com/match-api/v1/commentary/${matchId}`,
-   {
-    headers:{
-     "User-Agent":"Mozilla/5.0",
-     "Referer":"https://www.cricbuzz.com/"
-    }
-   }
-  )
+  const url =
+   `https://www.cricbuzz.com/live-cricket-scores/${matchId}`
 
-  const data = response.data
+  const response = await axios.get(url,{
+   headers:{
+    "User-Agent":"Mozilla/5.0"
+   }
+  })
+
+  const html = response.data
+
+  const $ = cheerio.load(html)
 
   const commentary = []
 
-  if(data && data.commentaryList){
+  $(".commtext").each((i,el)=>{
 
-   data.commentaryList.forEach(c => {
+   const text = $(el).text().trim()
 
-    if(c.commText){
-     commentary.push(c.commText)
-    }
+   if(text){
+    commentary.push(text)
+   }
 
-   })
-
-  }
+  })
 
   return commentary
 
  }
  catch(err){
 
-  console.log("Commentary fetch error:",err.message)
+  console.log("Commentary scrape error:",err.message)
 
   return []
 
@@ -101,34 +105,36 @@ async function fetchCommentary(matchId){
 
 
 
-// ---------------- FETCH SCOREBOARD ----------------
+// ---------------- FETCH SCORE ----------------
 
 async function fetchScore(matchId){
 
  try{
 
-  const response = await axios.get(
-   `https://www.cricbuzz.com/match-api/v1/${matchId}`,
-   {
-    headers:{
-     "User-Agent":"Mozilla/5.0",
-     "Referer":"https://www.cricbuzz.com/"
-    }
+  const url =
+   `https://www.cricbuzz.com/live-cricket-scores/${matchId}`
+
+  const response = await axios.get(url,{
+   headers:{
+    "User-Agent":"Mozilla/5.0"
    }
-  )
+  })
 
-  const data = response.data
+  const html = response.data
 
-  const team1 = data?.team1?.name || "Team A"
-  const team2 = data?.team2?.name || "Team B"
+  const $ = cheerio.load(html)
 
-  const runs = data?.score?.team1Score?.inngs1?.runs || 0
-  const wickets = data?.score?.team1Score?.inngs1?.wickets || 0
-  const overs = data?.score?.team1Score?.inngs1?.overs || "0"
+  const team1 = $(".cb-min-tm").first().text().trim()
+
+  const team2 = $(".cb-min-tm").eq(1).text().trim()
+
+  const score = $(".cb-font-20.text-bold").first().text().trim()
+
+  const overs = $(".cb-font-12").first().text().trim()
 
   return {
 
-   team1: team1 + " " + runs + "/" + wickets,
+   team1: team1 + " " + score,
    team2: team2,
    overs: overs
 
@@ -137,14 +143,13 @@ async function fetchScore(matchId){
  }
  catch(err){
 
-  console.log("Score fetch error:",err.message)
+  console.log("Score scrape error:",err.message)
 
   return null
 
  }
 
 }
-
 
 
 module.exports = {
