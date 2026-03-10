@@ -51,14 +51,19 @@ font-size:18px;
 <div id="commentary"></div>
 
 </div>
-
 <script>
 
 const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
-socket.onmessage = function(event){
+socket.onopen = () => {
+console.log("Overlay connected to server")
+}
+
+socket.onmessage = (event) => {
 
 const data = JSON.parse(event.data)
+
+console.log("Received:",data)
 
 if(data.type === "commentary"){
 
