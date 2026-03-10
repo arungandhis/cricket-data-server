@@ -1,35 +1,58 @@
-function startEngine(broadcast) {
+const fetchLiveScore = require("./liveScoreEngine")
+const { broadcastCommentary } = require("./websocket")
 
-  console.log("Match engine started")
+let engineRunning = false
 
-  let ball = 0
+function startLiveMatch(match) {
+
+  if (engineRunning) return
+
+  engineRunning = true
+
+  console.log("Live match engine started:", match.match)
+
+  setInterval(async () => {
+
+    const data = await fetchLiveScore(match.link)
+
+    if (!data) return
+
+    broadcastCommentary({
+      commentary: "Live Update",
+      score: data.score,
+      teams: data.teams
+    })
+
+  }, 15000)
+
+}
+
+/* TEST MATCH */
+
+function startTestMatch() {
+
+  console.log("Test match started")
+
+  let runs = 120
+  let wickets = 3
+  let overs = 14.2
 
   setInterval(() => {
 
-    ball++
+    runs += Math.floor(Math.random() * 6)
 
-    const payload = {
+    const score = `${runs}/${wickets} (${overs})`
 
-      team1: "India 145/3",
-      team2: "Australia",
+    broadcastCommentary({
+      commentary: "Kohli drives through covers for FOUR!",
+      score: score,
+      teams: "India vs Australia"
+    })
 
-      overs: "16." + ball,
-
-      batsman1: "Kohli 67 (42)",
-      batsman2: "Rahul 21 (14)",
-
-      bowler: "Starc",
-
-      commentary: "Kohli drives through covers for four!"
-
-    }
-
-    console.log("Broadcasting:", payload)
-
-    broadcast(payload)
+    overs += 0.1
 
   }, 5000)
 
 }
 
-module.exports = startEngine
+module.exports = { startLiveMatch, startTestMatch }
