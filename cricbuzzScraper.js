@@ -1,19 +1,29 @@
 const axios = require("axios")
 const cheerio = require("cheerio")
 
+// Browser-like headers to avoid 403
+const headers = {
+ "User-Agent":
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+ "Accept":
+  "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+ "Accept-Language": "en-US,en;q=0.9",
+ "Connection": "keep-alive",
+ "Referer": "https://www.cricbuzz.com/"
+}
+
+
+
 // ---------------- FETCH LIVE MATCHES ----------------
 
 async function fetchMatches(){
 
  try{
 
-  const url = "https://www.cricbuzz.com/cricket-match/live-scores"
+  const url =
+   "https://www.cricbuzz.com/cricket-match/live-scores"
 
-  const response = await axios.get(url,{
-   headers:{
-    "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-   }
-  })
+  const response = await axios.get(url,{ headers })
 
   const html = response.data
 
@@ -21,21 +31,21 @@ async function fetchMatches(){
 
   const matches = []
 
-  $("a.text-hvr-underline").each((i,el)=>{
-
-   const match = $(el).text().trim()
+  $("a[href*='/live-cricket-scores/']").each((i,el)=>{
 
    const link = $(el).attr("href")
 
-   if(link && link.includes("/live-cricket-scores/")){
+   const text = $(el).text().trim()
+
+   if(link && text){
 
     const parts = link.split("/")
 
     const matchId = parts[2]
 
     matches.push({
-     match: match,
-     matchId: matchId
+     match:text,
+     matchId:matchId
     })
 
    }
@@ -49,7 +59,7 @@ async function fetchMatches(){
  }
  catch(err){
 
-  console.log("Match scrape error:",err.message)
+  console.log("Match fetch error:",err.message)
 
   return []
 
@@ -68,11 +78,7 @@ async function fetchCommentary(matchId){
   const url =
    `https://www.cricbuzz.com/live-cricket-scores/${matchId}`
 
-  const response = await axios.get(url,{
-   headers:{
-    "User-Agent":"Mozilla/5.0"
-   }
-  })
+  const response = await axios.get(url,{ headers })
 
   const html = response.data
 
@@ -95,7 +101,7 @@ async function fetchCommentary(matchId){
  }
  catch(err){
 
-  console.log("Commentary scrape error:",err.message)
+  console.log("Commentary fetch error:",err.message)
 
   return []
 
@@ -114,11 +120,7 @@ async function fetchScore(matchId){
   const url =
    `https://www.cricbuzz.com/live-cricket-scores/${matchId}`
 
-  const response = await axios.get(url,{
-   headers:{
-    "User-Agent":"Mozilla/5.0"
-   }
-  })
+  const response = await axios.get(url,{ headers })
 
   const html = response.data
 
@@ -143,7 +145,7 @@ async function fetchScore(matchId){
  }
  catch(err){
 
-  console.log("Score scrape error:",err.message)
+  console.log("Score fetch error:",err.message)
 
   return null
 
