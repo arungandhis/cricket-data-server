@@ -26,7 +26,7 @@ async function runLoop(){
 
   try{
 
-   let latestEvent
+   let latestEvent = ""
    let scoreData
 
 
@@ -35,14 +35,12 @@ async function runLoop(){
     latestEvent = "Kohli drives beautifully through cover for four"
 
     scoreData = {
-
      team1:"India 145/3",
      team2:"Australia",
      overs:"16.2",
      batsman1:"Kohli 67 (42)",
      batsman2:"Rahul 21 (14)",
      bowler:"Starc"
-
     }
 
    }
@@ -50,7 +48,9 @@ async function runLoop(){
 
     const commentary = await scraper.fetchCommentary(currentMatchId)
 
-    latestEvent = commentary[0]
+    if(commentary && commentary.length > 0){
+      latestEvent = commentary[0]
+    }
 
     scoreData = await scraper.fetchScore(currentMatchId)
 
@@ -58,10 +58,7 @@ async function runLoop(){
 
 
    if(!latestEvent){
-
-    await sleep(5000)
-    continue
-
+    latestEvent = "Waiting for next ball..."
    }
 
 
@@ -76,7 +73,11 @@ async function runLoop(){
    lastCommentary = latestEvent
 
 
-   const aiLine = commentaryEngine.generate(latestEvent)
+   let aiLine = commentaryEngine.generate(latestEvent)
+
+   if(!aiLine){
+    aiLine = latestEvent
+   }
 
 
    const scoreboard = {
@@ -92,9 +93,11 @@ async function runLoop(){
    }
 
 
+   console.log("Sending commentary:",scoreboard.commentary)
+
    websocket.send(scoreboard)
 
-   voice.speak(aiLine)
+   voice.speak(scoreboard.commentary)
 
   }
   catch(err){
