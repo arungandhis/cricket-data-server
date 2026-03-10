@@ -1,58 +1,95 @@
-const fetchLiveScore = require("./liveScoreEngine")
 const { broadcastCommentary } = require("./websocket")
+const generateAudio = require("./ttsEngine")
 
-let engineRunning = false
+async function startTestMatch(){
 
-function startLiveMatch(match) {
+console.log("Starting TEST match")
 
-  if (engineRunning) return
+setInterval(async ()=>{
 
-  engineRunning = true
+const commentary = generateRandomCommentary()
 
-  console.log("Live match engine started:", match.match)
+const score = generateScore()
 
-  setInterval(async () => {
+try{
 
-    const data = await fetchLiveScore(match.link)
+const audio = await generateAudio(commentary)
 
-    if (!data) return
+broadcastCommentary({
+teams:"India vs Australia",
+score:score,
+commentary:commentary,
+audio:audio
+})
 
-    broadcastCommentary({
-      commentary: "Live Update",
-      score: data.score,
-      teams: data.teams
-    })
+}catch(err){
 
-  }, 15000)
-
-}
-
-/* TEST MATCH */
-
-function startTestMatch() {
-
-  console.log("Test match started")
-
-  let runs = 120
-  let wickets = 3
-  let overs = 14.2
-
-  setInterval(() => {
-
-    runs += Math.floor(Math.random() * 6)
-
-    const score = `${runs}/${wickets} (${overs})`
-
-    broadcastCommentary({
-      commentary: "Kohli drives through covers for FOUR!",
-      score: score,
-      teams: "India vs Australia"
-    })
-
-    overs += 0.1
-
-  }, 5000)
+console.log("Audio error:",err.message)
 
 }
 
-module.exports = { startLiveMatch, startTestMatch }
+},8000)
+
+}
+
+function startLiveMatch(match){
+
+console.log("Starting live match:",match.match)
+
+setInterval(async ()=>{
+
+const commentary = "Live update from "+match.match
+
+const score = generateScore()
+
+try{
+
+const audio = await generateAudio(commentary)
+
+broadcastCommentary({
+teams:match.match,
+score:score,
+commentary:commentary,
+audio:audio
+})
+
+}catch(err){
+
+console.log("Audio error:",err.message)
+
+}
+
+},10000)
+
+}
+
+function generateScore(){
+
+const runs = Math.floor(Math.random()*200)
+const wickets = Math.floor(Math.random()*10)
+const overs = (Math.random()*20).toFixed(1)
+
+return runs+"/"+wickets+" ("+overs+")"
+
+}
+
+function generateRandomCommentary(){
+
+const lines = [
+
+"Kohli drives through covers for FOUR!",
+"Beautiful yorker from Starc!",
+"That's pulled away for SIX!",
+"Edge and taken by the keeper!",
+"Brilliant running between the wickets!"
+
+]
+
+return lines[Math.floor(Math.random()*lines.length)]
+
+}
+
+module.exports = {
+startLiveMatch,
+startTestMatch
+}
