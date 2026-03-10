@@ -1,61 +1,57 @@
 const axios = require("axios")
-const cheerio = require("cheerio")
 
-// ---------------- FETCH MATCHES ----------------
+// ---------------- FETCH LIVE MATCHES ----------------
 
 async function fetchMatches(){
 
  try{
 
-  const url = "https://www.cricbuzz.com/cricket-match/live-scores"
-
-  const response = await axios.get(url,{
-   headers:{
-    "User-Agent":"Mozilla/5.0"
+  const response = await axios.get(
+   "https://www.cricbuzz.com/match-api/v1/liveMatches",
+   {
+    headers:{
+     "User-Agent":"Mozilla/5.0",
+     "Referer":"https://www.cricbuzz.com/",
+     "Accept":"application/json"
+    }
    }
-  })
+  )
 
-  const html = response.data
-
-  const $ = cheerio.load(html)
+  const data = response.data
 
   const matches = []
 
-  $(".cb-mtch-lst").each((i,el)=>{
+  if(data && data.matches){
 
-   const match = $(el).find(".cb-lv-scr-mtch-hdr").text().trim()
+   data.matches.forEach(m => {
 
-   const link = $(el).find("a").attr("href")
-
-   if(match && link){
-
-    const parts = link.split("/")
-
-    const matchId = parts[3]
+    const team1 = m.team1?.name || ""
+    const team2 = m.team2?.name || ""
 
     matches.push({
-     match:match,
-     matchId:matchId
+     match: team1 + " vs " + team2,
+     matchId: m.matchId
     })
 
-   }
+   })
 
-  })
+  }
 
-  console.log("Matches found:",matches.length)
+  console.log("Live matches found:",matches.length)
 
   return matches
 
  }
  catch(err){
 
-  console.log("Match fetch error:",err)
+  console.log("Match fetch error:",err.message)
 
   return []
 
  }
 
 }
+
 
 
 // ---------------- FETCH COMMENTARY ----------------
@@ -64,36 +60,38 @@ async function fetchCommentary(matchId){
 
  try{
 
-  const url = "https://www.cricbuzz.com/api/html/cricket-match-commentary/" + matchId
-
-  const response = await axios.get(url,{
-   headers:{
-    "User-Agent":"Mozilla/5.0"
+  const response = await axios.get(
+   `https://www.cricbuzz.com/match-api/v1/commentary/${matchId}`,
+   {
+    headers:{
+     "User-Agent":"Mozilla/5.0",
+     "Referer":"https://www.cricbuzz.com/"
+    }
    }
-  })
+  )
 
-  const html = response.data
-
-  const $ = cheerio.load(html)
+  const data = response.data
 
   const commentary = []
 
-  $(".commtext").each((i,el)=>{
+  if(data && data.commentaryList){
 
-   const text = $(el).text().trim()
+   data.commentaryList.forEach(c => {
 
-   if(text){
-    commentary.push(text)
-   }
+    if(c.commText){
+     commentary.push(c.commText)
+    }
 
-  })
+   })
+
+  }
 
   return commentary
 
  }
  catch(err){
 
-  console.log("Commentary fetch error:",err)
+  console.log("Commentary fetch error:",err.message)
 
   return []
 
@@ -102,35 +100,35 @@ async function fetchCommentary(matchId){
 }
 
 
-// ---------------- FETCH SCORE ----------------
+
+// ---------------- FETCH SCOREBOARD ----------------
 
 async function fetchScore(matchId){
 
  try{
 
-  const url = "https://www.cricbuzz.com/live-cricket-scores/" + matchId
-
-  const response = await axios.get(url,{
-   headers:{
-    "User-Agent":"Mozilla/5.0"
+  const response = await axios.get(
+   `https://www.cricbuzz.com/match-api/v1/${matchId}`,
+   {
+    headers:{
+     "User-Agent":"Mozilla/5.0",
+     "Referer":"https://www.cricbuzz.com/"
+    }
    }
-  })
+  )
 
-  const html = response.data
+  const data = response.data
 
-  const $ = cheerio.load(html)
+  const team1 = data?.team1?.name || "Team A"
+  const team2 = data?.team2?.name || "Team B"
 
-  const team1 = $(".cb-min-tm").first().text().trim()
+  const runs = data?.score?.team1Score?.inngs1?.runs || 0
+  const wickets = data?.score?.team1Score?.inngs1?.wickets || 0
+  const overs = data?.score?.team1Score?.inngs1?.overs || "0"
 
-  const team2 = $(".cb-min-tm").eq(1).text().trim()
+  return {
 
-  const score = $(".cb-font-20.text-bold").first().text().trim()
-
-  const overs = $(".cb-font-12").first().text().trim()
-
-  return{
-
-   team1: team1 + " " + score,
+   team1: team1 + " " + runs + "/" + wickets,
    team2: team2,
    overs: overs
 
@@ -139,13 +137,14 @@ async function fetchScore(matchId){
  }
  catch(err){
 
-  console.log("Score fetch error:",err)
+  console.log("Score fetch error:",err.message)
 
   return null
 
  }
 
 }
+
 
 
 module.exports = {
