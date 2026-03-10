@@ -19,6 +19,20 @@ startWebSocket(server)
 
 app.use(express.static(path.join(__dirname, "public")))
 
+app.get("/test-commentary",(req,res)=>{
+
+broadcastCommentary({
+teams:"India vs Australia",
+score:"120/3 (14.2)",
+commentary:"Kohli drives through covers for FOUR!"
+})
+
+res.send("sent")
+
+})
+
+
+
 /* GET MATCHES */
 
 app.get("/matches", async (req, res) => {
