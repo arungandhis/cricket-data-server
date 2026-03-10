@@ -1,132 +1,124 @@
-const scraper = require("./cricbuzzScraper")
-const websocket = require("./websocket")
-const commentaryEngine = require("./commentaryEngine")
-const voice = require("./voiceEngine")
+const axios = require("axios")
 
-let running = false
-let currentMatchId = null
-let lastCommentary = ""
+let currentMatch = null
 
+async function fetchMatches(){
 
-async function start(matchId){
+ try{
 
- running = true
- currentMatchId = matchId
+  const res = await axios.get(
+   "https://cricket-data-server.onrender.com/matches"
+  )
 
- console.log("Match engine started:",matchId)
+  return res.data
 
- runLoop()
+ }catch(err){
 
-}
+  console.log("Match fetch error:",err.message)
 
-
-async function runLoop(){
-
- while(running){
-
-  try{
-
-   let latestEvent = ""
-   let scoreData
-
-
-   if(currentMatchId === "test-match"){
-
-    latestEvent = "Kohli drives beautifully through cover for four"
-
-    scoreData = {
-     team1:"India 145/3",
-     team2:"Australia",
-     overs:"16.2",
-     batsman1:"Kohli 67 (42)",
-     batsman2:"Rahul 21 (14)",
-     bowler:"Starc"
-    }
-
-   }
-   else{
-
-    const commentary = await scraper.fetchCommentary(currentMatchId)
-
-    if(commentary && commentary.length > 0){
-      latestEvent = commentary[0]
-    }
-
-    scoreData = await scraper.fetchScore(currentMatchId)
-
-   }
-
-
-   if(!latestEvent){
-    latestEvent = "Waiting for next ball..."
-   }
-
-
-   if(latestEvent === lastCommentary){
-
-    await sleep(4000)
-    continue
-
-   }
-
-
-   lastCommentary = latestEvent
-
-
-   let aiLine = commentaryEngine.generate(latestEvent)
-
-   if(!aiLine){
-    aiLine = latestEvent
-   }
-
-
-   const scoreboard = {
-
-    commentary: aiLine,
-    team1: scoreData?.team1 || "Team A",
-    team2: scoreData?.team2 || "Team B",
-    overs: scoreData?.overs || "0.0",
-    batsman1: scoreData?.batsman1 || "",
-    batsman2: scoreData?.batsman2 || "",
-    bowler: scoreData?.bowler || ""
-
-   }
-
-
-   console.log("Sending commentary:",scoreboard.commentary)
-
-   websocket.send(scoreboard)
-
-   voice.speak(scoreboard.commentary)
-
-  }
-  catch(err){
-
-   console.log("Match engine error:",err)
-
-  }
-
-  await sleep(6000)
-
+  return []
  }
 
 }
 
 
-function stop(){
 
- running = false
- currentMatchId = null
+async function fetchCommentary(matchId){
+
+ try{
+
+  const res = await axios.get(
+   `https://cricket-data-server.onrender.com/commentary/${matchId}`
+  )
+
+  return res.data
+
+ }catch(err){
+
+  console.log("Commentary fetch error:",err.message)
+
+  return null
+ }
 
 }
 
 
-function sleep(ms){
- return new Promise(resolve=>setTimeout(resolve,ms))
+
+async function startEngine(io){
+
+ setInterval(async ()=>{
+
+  try{
+
+   if(!currentMatch){
+
+    const matches = await fetchMatches()
+
+    if(matches.length === 0){
+
+     // TEST MODE
+     io.emit("commentary",{
+
+      team1:"India 145/3",
+      team2:"Australia",
+
+      overs:"16.2",
+
+      batsman1:"Kohli 67 (42)",
+      batsman2:"Rahul 21 (14)",
+
+      bowler:"Starc",
+
+      commentary:"Test match commentary running"
+
+     })
+
+     return
+    }
+
+    currentMatch = matches[0].matchId
+   }
+
+
+
+   const data = await fetchCommentary(currentMatch)
+
+   if(!data) return
+
+
+
+   const payload = {
+
+    team1: data.team1 || "Team A",
+    team2: data.team2 || "Team B",
+
+    overs: data.overs || "",
+
+    batsman1: data.batsman1 || "",
+    batsman2: data.batsman2 || "",
+
+    bowler: data.bowler || "",
+
+    commentary: data.commentary || ""
+
+   }
+
+
+
+   io.emit("commentary",payload)
+
+  }
+
+  catch(err){
+
+   console.log("Engine error:",err.message)
+
+  }
+
+ },5000)
+
 }
 
 
-module.exports = {
- start,
- stop
-}
+
+module.exports = { startEngine }
