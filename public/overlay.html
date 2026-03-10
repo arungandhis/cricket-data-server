@@ -3,7 +3,7 @@
 
 <head>
 
-<title>Cricket Broadcast Overlay</title>
+<title>Cricket Overlay</title>
 
 <style>
 
@@ -15,24 +15,21 @@ body{
 }
 
 #scoreboard{
- background:#111;
- padding:20px;
- margin-bottom:20px;
-}
-
-.team{
- font-size:28px;
-}
-
-#commentary{
- font-size:32px;
  margin-top:40px;
 }
 
-#startBtn{
- padding:12px 20px;
- font-size:18px;
+.team{
+ font-size:30px;
+}
+
+#players{
  margin-top:20px;
+ font-size:22px;
+}
+
+#commentary{
+ margin-top:40px;
+ font-size:28px;
 }
 
 </style>
@@ -43,11 +40,21 @@ body{
 
 <div id="scoreboard">
 
-<div class="team" id="team1">TEAM A</div>
-<div class="team" id="team2">TEAM B</div>
-<div id="overs">Overs: 0.0</div>
+<div id="team1" class="team"></div>
+<div id="team2" class="team"></div>
+<div id="overs"></div>
 
 </div>
+
+
+<div id="players">
+
+<div id="batsman1"></div>
+<div id="batsman2"></div>
+<div id="bowler"></div>
+
+</div>
+
 
 <div id="commentary">
 
@@ -55,50 +62,39 @@ Waiting for commentary...
 
 </div>
 
-<button id="startBtn">Enable Audio</button>
 
 <audio id="audio"></audio>
 
+
 <script>
 
-let audioEnabled=false
+const socket=new WebSocket("wss://cricket-data-server.onrender.com")
 
 const audio=document.getElementById("audio")
 
-// unlock audio with user tap
-document.getElementById("startBtn").onclick=function(){
-
- audioEnabled=true
-
- audio.play().catch(()=>{})
-
- this.style.display="none"
-
-}
-
-// websocket connection
-const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
 socket.onmessage=function(event){
 
- const data = JSON.parse(event.data)
+ const data=JSON.parse(event.data)
 
- document.getElementById("commentary").innerText=data.commentary
  document.getElementById("team1").innerText=data.team1
  document.getElementById("team2").innerText=data.team2
  document.getElementById("overs").innerText="Overs: "+data.overs
 
- if(audioEnabled){
+ document.getElementById("batsman1").innerText=data.batsman1
+ document.getElementById("batsman2").innerText=data.batsman2
+ document.getElementById("bowler").innerText="Bowler: "+data.bowler
 
-  audio.src="/commentary.mp3?t="+new Date().getTime()
+ document.getElementById("commentary").innerText=data.commentary
 
-  audio.play().catch(()=>{})
+ audio.src="/commentary.mp3?t="+new Date().getTime()
 
- }
+ audio.play().catch(()=>{})
 
 }
 
 </script>
 
 </body>
+
 </html>
