@@ -1,4 +1,5 @@
 const axios = require("axios")
+const cheerio = require("cheerio")
 
 // ---------------- FETCH MATCHES ----------------
 
@@ -6,61 +7,49 @@ async function fetchMatches(){
 
  try{
 
-  const url = "https://www.cricbuzz.com/api/cricket-match/live-scores"
+  const url = "https://www.cricbuzz.com/cricket-match/live-scores"
 
   const response = await axios.get(url,{
    headers:{
-    "User-Agent":"Mozilla/5.0",
-    "Accept":"application/json"
+    "User-Agent":"Mozilla/5.0"
    }
   })
 
-  const data = response.data
+  const html = response.data
+
+  const $ = cheerio.load(html)
 
   const matches = []
 
-  if(data && data.typeMatches){
+  $(".cb-mtch-lst").each((i,el)=>{
 
-   data.typeMatches.forEach(type => {
+   const match = $(el).find(".cb-lv-scr-mtch-hdr").text().trim()
 
-    type.seriesMatches.forEach(series => {
+   const link = $(el).find("a").attr("href")
 
-     if(series.seriesAdWrapper && series.seriesAdWrapper.matches){
+   if(match && link){
 
-      series.seriesAdWrapper.matches.forEach(match => {
+    const parts = link.split("/")
 
-       if(match.matchInfo){
+    const matchId = parts[3]
 
-        const info = match.matchInfo
-
-        const team1 = info.team1?.teamSName || ""
-        const team2 = info.team2?.teamSName || ""
-
-        matches.push({
-         match: team1 + " vs " + team2,
-         matchId: info.matchId
-        })
-
-       }
-
-      })
-
-     }
-
+    matches.push({
+     match:match,
+     matchId:matchId
     })
 
-   })
+   }
 
-  }
+  })
 
-  console.log("Live matches found:", matches.length)
+  console.log("Matches found:",matches.length)
 
   return matches
 
  }
  catch(err){
 
-  console.log("Live match fetch error:", err.message)
+  console.log("Match fetch error:",err)
 
   return []
 
@@ -75,8 +64,7 @@ async function fetchCommentary(matchId){
 
  try{
 
-  const url =
-   "https://www.cricbuzz.com/api/cricket-match/commentary/" + matchId
+  const url = "https://www.cricbuzz.com/api/html/cricket-match-commentary/" + matchId
 
   const response = await axios.get(url,{
    headers:{
@@ -84,28 +72,28 @@ async function fetchCommentary(matchId){
    }
   })
 
-  const data = response.data
+  const html = response.data
+
+  const $ = cheerio.load(html)
 
   const commentary = []
 
-  if(data && data.commentaryList){
+  $(".commtext").each((i,el)=>{
 
-   data.commentaryList.forEach(c => {
+   const text = $(el).text().trim()
 
-    if(c.commText){
-     commentary.push(c.commText)
-    }
+   if(text){
+    commentary.push(text)
+   }
 
-   })
-
-  }
+  })
 
   return commentary
 
  }
  catch(err){
 
-  console.log("Commentary fetch error:", err.message)
+  console.log("Commentary fetch error:",err)
 
   return []
 
@@ -120,8 +108,7 @@ async function fetchScore(matchId){
 
  try{
 
-  const url =
-   "https://www.cricbuzz.com/api/cricket-match/" + matchId
+  const url = "https://www.cricbuzz.com/live-cricket-scores/" + matchId
 
   const response = await axios.get(url,{
    headers:{
@@ -129,25 +116,30 @@ async function fetchScore(matchId){
    }
   })
 
-  const data = response.data
+  const html = response.data
 
-  const team1 = data?.team1?.teamSName || "Team A"
-  const team2 = data?.team2?.teamSName || "Team B"
+  const $ = cheerio.load(html)
 
-  const score = data?.score?.team1Score?.inngs1?.runs || 0
-  const wickets = data?.score?.team1Score?.inngs1?.wickets || 0
-  const overs = data?.score?.team1Score?.inngs1?.overs || "0"
+  const team1 = $(".cb-min-tm").first().text().trim()
 
-  return {
-   team1: team1 + " " + score + "/" + wickets,
+  const team2 = $(".cb-min-tm").eq(1).text().trim()
+
+  const score = $(".cb-font-20.text-bold").first().text().trim()
+
+  const overs = $(".cb-font-12").first().text().trim()
+
+  return{
+
+   team1: team1 + " " + score,
    team2: team2,
    overs: overs
+
   }
 
  }
  catch(err){
 
-  console.log("Score fetch error:", err.message)
+  console.log("Score fetch error:",err)
 
   return null
 
