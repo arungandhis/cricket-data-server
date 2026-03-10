@@ -1,68 +1,80 @@
 const express = require("express")
-const WebSocket = require("ws")
+const http = require("http")
+const cors = require("cors")
 const path = require("path")
 
-const startEngine = require("./matchEngine")
-const scrapeMatches = require("./cricbuzzScraper")
+const { startWebSocket } = require("./websocket")
+const { startLiveMatch, startTestMatch } = require("./matchEngine")
+const fetchMatches = require("./cricbuzzScraper")
 
 const app = express()
-
+app.use(cors())
 app.use(express.json())
 
-// serve admin + overlay files
-app.use(express.static("public"))
+const server = http.createServer(app)
 
+startWebSocket(server)
 
-// GET MATCHES FOR ADMIN UI
+/* SERVE ADMIN + OVERLAY */
+
+app.use(express.static(path.join(__dirname, "public")))
+
+/* GET MATCHES */
+
 app.get("/matches", async (req, res) => {
 
   try {
 
-    const matches = await scrapeMatches()
+    const matches = await fetchMatches()
 
-    res.json(matches)
+    const testMatch = {
+      match: "TEST MATCH",
+      matchId: "test-match",
+      link: "test"
+    }
+
+    res.json([testMatch, ...matches])
 
   } catch (err) {
 
     console.log("Match fetch error:", err.message)
 
-    res.json([])
+    res.json([
+      {
+        match: "TEST MATCH",
+        matchId: "test-match",
+        link: "test"
+      }
+    ])
 
   }
 
 })
 
+/* START MATCH */
 
-// start http server
-const server = app.listen(process.env.PORT || 3000, () => {
-  console.log("Server running")
+app.post("/start-match", (req, res) => {
+
+  const match = req.body
+
+  console.log("Starting match:", match)
+
+  if (match.link === "test") {
+
+    startTestMatch()
+
+  } else {
+
+    startLiveMatch(match)
+
+  }
+
+  res.json({ status: "started" })
+
 })
 
+const PORT = process.env.PORT || 3000
 
-// WEBSOCKET
-const wss = new WebSocket.Server({ server })
-
-
-wss.on("connection", (ws) => {
-
-  console.log("Overlay connected")
-
+server.listen(PORT, () => {
+  console.log("Server running on port", PORT)
 })
-
-
-// broadcast helper
-function broadcast(data) {
-
-  wss.clients.forEach(client => {
-
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data))
-    }
-
-  })
-
-}
-
-
-// start commentary engine
-startEngine(broadcast)
