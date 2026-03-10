@@ -11,6 +11,7 @@ body{
  background:black;
  color:white;
  font-family:Arial;
+ text-align:center;
 }
 
 #scoreboard{
@@ -26,7 +27,12 @@ body{
 #commentary{
  font-size:32px;
  margin-top:40px;
- text-align:center;
+}
+
+#startBtn{
+ padding:12px 20px;
+ font-size:18px;
+ margin-top:20px;
 }
 
 </style>
@@ -37,10 +43,8 @@ body{
 
 <div id="scoreboard">
 
-<div class="team" id="team1">TEAM A - 0/0</div>
-
-<div class="team" id="team2">TEAM B - 0/0</div>
-
+<div class="team" id="team1">TEAM A</div>
+<div class="team" id="team2">TEAM B</div>
 <div id="overs">Overs: 0.0</div>
 
 </div>
@@ -51,27 +55,46 @@ Waiting for commentary...
 
 </div>
 
-<audio id="audio" autoplay></audio>
+<button id="startBtn">Enable Audio</button>
+
+<audio id="audio"></audio>
 
 <script>
 
+let audioEnabled=false
+
+const audio=document.getElementById("audio")
+
+// unlock audio with user tap
+document.getElementById("startBtn").onclick=function(){
+
+ audioEnabled=true
+
+ audio.play().catch(()=>{})
+
+ this.style.display="none"
+
+}
+
+// websocket connection
 const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
-socket.onmessage = function(event){
+socket.onmessage=function(event){
 
  const data = JSON.parse(event.data)
 
- document.getElementById("commentary").innerText = data.commentary
+ document.getElementById("commentary").innerText=data.commentary
+ document.getElementById("team1").innerText=data.team1
+ document.getElementById("team2").innerText=data.team2
+ document.getElementById("overs").innerText="Overs: "+data.overs
 
- document.getElementById("team1").innerText = data.team1
- document.getElementById("team2").innerText = data.team2
- document.getElementById("overs").innerText = "Overs: " + data.overs
+ if(audioEnabled){
 
- const audio=document.getElementById("audio")
+  audio.src="/commentary.mp3?t="+new Date().getTime()
 
- audio.src="/commentary.mp3?t="+new Date().getTime()
+  audio.play().catch(()=>{})
 
- audio.play()
+ }
 
 }
 
