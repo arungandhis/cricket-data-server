@@ -14,12 +14,8 @@ body{
  text-align:center;
 }
 
-#scoreboard{
- margin-top:40px;
-}
-
 .team{
- font-size:30px;
+ font-size:32px;
 }
 
 #players{
@@ -38,14 +34,9 @@ body{
 
 <body>
 
-<div id="scoreboard">
-
 <div id="team1" class="team"></div>
 <div id="team2" class="team"></div>
 <div id="overs"></div>
-
-</div>
-
 
 <div id="players">
 
@@ -55,39 +46,36 @@ body{
 
 </div>
 
-
 <div id="commentary">
 
 Waiting for commentary...
 
 </div>
 
-
 <audio id="audio"></audio>
-
 
 <script>
 
-const socket=new WebSocket("wss://cricket-data-server.onrender.com")
+const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
-const audio=document.getElementById("audio")
+const audio = document.getElementById("audio")
 
 
-socket.onmessage=function(event){
+socket.onmessage = function(event){
 
- const data=JSON.parse(event.data)
+ const data = JSON.parse(event.data)
 
- document.getElementById("team1").innerText=data.team1
- document.getElementById("team2").innerText=data.team2
- document.getElementById("overs").innerText="Overs: "+data.overs
+ document.getElementById("team1").innerText = data.team1
+ document.getElementById("team2").innerText = data.team2
+ document.getElementById("overs").innerText = "Overs: " + data.overs
 
- document.getElementById("batsman1").innerText=data.batsman1
- document.getElementById("batsman2").innerText=data.batsman2
- document.getElementById("bowler").innerText="Bowler: "+data.bowler
+ document.getElementById("batsman1").innerText = data.batsman1
+ document.getElementById("batsman2").innerText = data.batsman2
+ document.getElementById("bowler").innerText = "Bowler: " + data.bowler
 
- document.getElementById("commentary").innerText=data.commentary
+ document.getElementById("commentary").innerText = data.commentary
 
- audio.src="/commentary.mp3?t="+new Date().getTime()
+ audio.src = "/commentary.mp3?t=" + new Date().getTime()
 
  audio.play().catch(()=>{})
 
