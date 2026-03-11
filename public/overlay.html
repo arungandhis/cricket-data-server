@@ -1,31 +1,43 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
-<title>Cricket Overlay</title>
+<title>Cricket Live Overlay</title>
 
 <style>
 
 body{
-font-family:Arial;
 background:black;
 color:white;
+font-family:Arial;
 text-align:center;
+margin:0;
+padding:0;
+}
+
+#overlay{
+position:absolute;
+bottom:0;
+width:100%;
+background:rgba(0,0,0,0.8);
+padding:20px;
 }
 
 #teams{
-font-size:28px;
-margin-top:20px;
+font-size:30px;
+font-weight:bold;
 }
 
 #score{
-font-size:40px;
+font-size:42px;
 margin-top:10px;
 }
 
 #commentary{
 font-size:22px;
-margin-top:20px;
+margin-top:15px;
+color:#00ffcc;
 }
 
 </style>
@@ -34,47 +46,84 @@ margin-top:20px;
 
 <body>
 
-<div id="teams">Waiting for match</div>
+<div id="overlay">
+
+<div id="teams">
+Waiting for match...
+</div>
 
 <div id="score"></div>
 
 <div id="commentary"></div>
 
-<audio id="audioPlayer"></audio>
+</div>
+
+<audio id="commentaryAudio"></audio>
 
 <script>
 
+/* CONNECT WEBSOCKET */
+
 const socket = new WebSocket("wss://cricket-data-server.onrender.com")
+
+socket.onopen = () => {
+console.log("Overlay connected")
+}
+
+/* RECEIVE COMMENTARY */
 
 socket.onmessage = function(event){
 
 const data = JSON.parse(event.data)
 
+console.log("Overlay received:",data)
+
+/* TEAMS */
+
 if(data.teams){
 document.getElementById("teams").innerText = data.teams
 }
+
+/* SCORE */
 
 if(data.score){
 document.getElementById("score").innerText = data.score
 }
 
+/* COMMENTARY */
+
 if(data.commentary){
 document.getElementById("commentary").innerText = data.commentary
 }
 
+/* AUDIO PLAYBACK */
+
 if(data.audio){
 
-const player = document.getElementById("audioPlayer")
+const player = document.getElementById("commentaryAudio")
 
 player.src = data.audio + "?t=" + Date.now()
 
-player.play()
+player.play().catch(e=>{
+console.log("Audio autoplay blocked")
+})
 
 }
 
+}
+
+/* ERROR HANDLING */
+
+socket.onerror = function(err){
+console.log("WebSocket error:",err)
+}
+
+socket.onclose = function(){
+console.log("WebSocket closed")
 }
 
 </script>
 
 </body>
+
 </html>
