@@ -1,115 +1,68 @@
-const axios = require("axios")
+const puppeteer = require("puppeteer")
 
 async function fetchCommentary(url){
 
+let browser
+
 try{
 
-/* EXTRACT MATCH ID */
-
-const parts = url.split("/")
-let matchId = parts.find(p => /^\d+$/.test(p))
-
-if(!matchId){
-console.log("Invalid match id")
-return null
-}
-
-/* CORRECT CRICBUZZ API */
-
-const api =
-"https://www.cricbuzz.com/live-cricket-scores/" +matchId +
-"/commentary"
-
-
-// https://www.cricbuzz.com/live-cricket-scores/147863/commentary
-
-const response = await axios.get(api,{
-headers:{
-"User-Agent":"Mozilla/5.0",
-"Accept":"application/json"
-}
+browser = await puppeteer.launch({
+args:["--no-sandbox","--disable-setuid-sandbox"],
+headless:true
 })
 
-const data = response.data
+const page = await browser.newPage()
 
-if(!data || !data.commentaryList || data.commentaryList.length === 0){
+await page.goto(url,{
+waitUntil:"networkidle2",
+timeout:0
+})
 
-console.log("No commentary in API")
+/* SCRAPE COMMENTARY */
 
-return null
-}
+const data = await page.evaluate(()=>{
 
-/* LATEST BALL */
+const commEl = document.querySelector(".cb-com-ln")
 
-const latest = data.commentaryList[0]
+const scoreEl = document.querySelector(".cb-nav-tab.active")
 
-const commentary = latest.commText || ""
-
-/* SCORE */
-
+let commentary = ""
 let score = ""
 
-if(data.miniscore){
-
-score =
-data.miniscore.totalRuns +
-"/" +
-data.miniscore.wickets +
-" (" +
-data.miniscore.overs +
-")"
-
+if(commEl){
+commentary = commEl.innerText.trim()
 }
 
-/* BATSMEN */
-
-let batsmen = []
-
-if(data.miniscore?.batsmanStriker){
-batsmen.push(
-data.miniscore.batsmanStriker.name +
-" " +
-data.miniscore.batsmanStriker.runs +
-"(" +
-data.miniscore.batsmanStriker.balls +
-")"
-)
-}
-
-if(data.miniscore?.batsmanNonStriker){
-batsmen.push(
-data.miniscore.batsmanNonStriker.name +
-" " +
-data.miniscore.batsmanNonStriker.runs +
-"(" +
-data.miniscore.batsmanNonStriker.balls +
-")"
-)
-}
-
-/* BOWLER */
-
-let bowler = ""
-
-if(data.miniscore?.bowlerStriker){
-bowler =
-data.miniscore.bowlerStriker.name +
-" " +
-data.miniscore.bowlerStriker.wickets +
-"/" +
-data.miniscore.bowlerStriker.runs
+if(scoreEl){
+score = scoreEl.innerText.trim()
 }
 
 return {
 commentary,
-score,
-batsmen,
-bowler
+score
+}
+
+})
+
+await browser.close()
+
+if(!data.commentary){
+console.log("Empty commentary from Puppeteer")
+return null
+}
+
+return {
+commentary:data.commentary,
+score:data.score,
+batsmen:[],
+bowler:""
 }
 
 }catch(err){
 
-console.log("Commentary API error:",err.message)
+console.log("Puppeteer scraper error:",err.message)
+
+if(browser) await browser.close()
 
 return null
 
