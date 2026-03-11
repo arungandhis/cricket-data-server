@@ -1,154 +1,129 @@
 <!DOCTYPE html>
 <html>
-
 <head>
+  <title>Live Overlay</title>
 
-<title>Cricket Broadcast Overlay</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
 
-<style>
+    #container {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 95%;
+    }
 
-body{
-margin:0;
-background:black;
-color:white;
-font-family:Arial;
-}
+    #teams {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
 
-#teams{
-position:absolute;
-bottom:120px;
-width:100%;
-text-align:center;
-font-size:28px;
-font-weight:bold;
-}
+    #score {
+      font-size: 28px;
+      margin-bottom: 15px;
+    }
 
-#score{
-position:absolute;
-bottom:90px;
-width:100%;
-text-align:center;
-font-size:36px;
-color:#00ffcc;
-}
+    #batsmen, #bowler {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
 
-#commentary{
-position:absolute;
-bottom:150px;
-width:100%;
-text-align:center;
-font-size:22px;
-color:#ffd700;
-}
+    #commentary {
+      font-size: 30px;
+      font-weight: bold;
+      margin-top: 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-#batsmen{
-position:absolute;
-bottom:60px;
-width:100%;
-text-align:center;
-font-size:18px;
-}
+    /* Fade animation */
+    .fade {
+      animation: fadeIn 0.4s ease-in-out;
+    }
 
-#bowler{
-position:absolute;
-bottom:30px;
-width:100%;
-text-align:center;
-font-size:18px;
-}
-
-</style>
-
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 
 <body>
 
-<div id="commentary">Waiting for commentary...</div>
+<div id="container">
+  <div id="teams"></div>
+  <div id="score"></div>
+  <div id="batsmen"></div>
+  <div id="bowler"></div>
+  <div id="commentary"></div>
+</div>
 
-<div id="teams">Waiting for match...</div>
-
-<div id="score"></div>
-
-<div id="batsmen"></div>
-
-<div id="bowler"></div>
-
-<audio id="audioPlayer"></audio>
+<audio id="player" autoplay></audio>
 
 <script>
+let ws;
 
-/* CONNECT WEBSOCKET */
+function connectWS() {
+  const protocol = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${protocol}://${location.host}`);
 
-const socket = new WebSocket(
-(location.protocol === "https:" ? "wss://" : "ws://") + location.host
-)
+  ws.onopen = () => console.log("WebSocket connected");
 
-socket.onopen = function(){
-console.log("Overlay connected")
+  ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+
+    updateField("teams", data.teams);
+    updateField("score", data.score);
+
+    if (data.batsmen && data.batsmen.length > 0) {
+      updateField("batsmen", "Batsmen: " + data.batsmen.join(" | "));
+    }
+
+    if (data.bowler) {
+      updateField("bowler", "Bowler: " + data.bowler);
+    }
+
+    if (data.commentary) {
+      updateField("commentary", data.commentary, true);
+    }
+
+    if (data.audio) {
+      const player = document.getElementById("player");
+      player.src = data.audio + "?t=" + Date.now();
+      player.play().catch(() => {});
+    }
+  };
+
+  ws.onclose = () => {
+    console.log("WebSocket disconnected, retrying...");
+    setTimeout(connectWS, 2000);
+  };
 }
 
-socket.onmessage = function(event){
+function updateField(id, text, animate = false) {
+  const el = document.getElementById(id);
+  if (!el) return;
 
-console.log("Message received:", event.data)
+  if (animate) {
+    el.classList.remove("fade");
+    void el.offsetWidth; // restart animation
+    el.classList.add("fade");
+  }
 
-const data = JSON.parse(event.data)
-
-/* UPDATE COMMENTARY */
-
-if(data.commentary){
-document.getElementById("commentary").innerText = data.commentary
+  el.textContent = text;
 }
 
-/* UPDATE TEAMS */
-
-if(data.teams){
-document.getElementById("teams").innerText = data.teams
-}
-
-/* UPDATE SCORE */
-
-if(data.score){
-document.getElementById("score").innerText = data.score
-}
-
-/* UPDATE BATSMEN */
-
-if(data.batsmen){
-document.getElementById("batsmen").innerText =
-data.batsmen.join(" | ")
-}
-
-/* UPDATE BOWLER */
-
-if(data.bowler){
-document.getElementById("bowler").innerText =
-"Bowler: " + data.bowler
-}
-
-/* PLAY AUDIO */
-
-if(data.audio){
-
-const player = document.getElementById("audioPlayer")
-
-player.src = data.audio + "?t=" + Date.now()
-
-player.play().catch(()=>{})
-
-}
-
-}
-
-socket.onerror = function(err){
-console.log("Socket error:",err)
-}
-
-socket.onclose = function(){
-console.log("Socket closed")
-}
-
+connectWS();
 </script>
 
 </body>
-
 </html>
