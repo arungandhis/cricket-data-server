@@ -7,13 +7,12 @@ try{
 
 const response = await axios.get(url,{
 headers:{
-"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+"User-Agent":"Mozilla/5.0",
 "Accept-Language":"en-US,en;q=0.9"
 }
 })
 
-const html = response.data
-const $ = cheerio.load(html)
+const $ = cheerio.load(response.data)
 
 /* COMMENTARY */
 
@@ -25,33 +24,23 @@ commentary = $(el).text().trim()
 
 /* SCORE */
 
-let score = $(".cb-font-20").first().text().trim()
+let score = $(".cb-nav-tab.active").text().trim()
 
-/* BATSMEN */
+/* FALLBACK SCORE */
 
-let batsmen = []
-
-$(".cb-scrd-itms").slice(0,2).each((i,el)=>{
-batsmen.push($(el).text().replace(/\n/g," ").trim())
-})
-
-/* BOWLER */
-
-let bowler = ""
-
-$(".cb-scrd-itms").slice(2,3).each((i,el)=>{
-bowler = $(el).text().replace(/\n/g," ").trim()
-})
+if(!score){
+score = $(".cb-font-20").first().text().trim()
+}
 
 if(!commentary){
 console.log("Empty commentary from scraper")
 }
 
+/* RETURN */
+
 return {
 commentary,
-score,
-batsmen,
-bowler
+score
 }
 
 }catch(err){
