@@ -3,6 +3,7 @@ const fetchCommentary = require("./commentaryScraper")
 const generateAudio = require("./ttsEngine")
 
 let matchInterval = null
+let lastCommentary = null
 
 /* TEST MATCH */
 
@@ -17,6 +18,12 @@ clearInterval(matchInterval)
 matchInterval = setInterval(async ()=>{
 
 const commentary = "Kohli drives through covers for FOUR!"
+
+if(commentary === lastCommentary){
+return
+}
+
+lastCommentary = commentary
 
 try{
 
@@ -55,6 +62,8 @@ if(matchInterval){
 clearInterval(matchInterval)
 }
 
+lastCommentary = null
+
 matchInterval = setInterval(async ()=>{
 
 try{
@@ -74,16 +83,21 @@ console.log("Skipping empty commentary")
 return
 }
 
+/* PREVENT DUPLICATE COMMENTARY */
+
+if(commentary === lastCommentary){
+console.log("Duplicate commentary ignored")
+return
+}
+
+lastCommentary = commentary
+
 let audio = null
 
 try{
-
 audio = await generateAudio(commentary)
-
 }catch(e){
-
 console.log("Audio generation failed:",e.message)
-
 }
 
 /* BROADCAST */
@@ -95,7 +109,7 @@ commentary:commentary,
 audio:audio
 })
 
-console.log("Broadcasting:",commentary)
+console.log("New ball commentary:",commentary)
 
 }catch(err){
 
@@ -103,7 +117,7 @@ console.log("Match engine error:",err.message)
 
 }
 
-},12000)
+},10000)
 
 }
 
