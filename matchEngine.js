@@ -16,7 +16,9 @@ clearInterval(matchInterval)
 
 matchInterval = setInterval(async ()=>{
 
-const commentary = "Kohli drives beautifully through covers for FOUR"
+const commentary = "Kohli drives through covers for FOUR!"
+
+try{
 
 const audio = await generateAudio(commentary)
 
@@ -26,6 +28,18 @@ score:"145/3 (15.4)",
 commentary:commentary,
 audio:audio
 })
+
+}catch(err){
+
+console.log("Audio error:",err.message)
+
+broadcastCommentary({
+teams:"India vs Australia",
+score:"145/3 (15.4)",
+commentary:commentary
+})
+
+}
 
 },8000)
 
@@ -47,18 +61,41 @@ try{
 
 const data = await fetchCommentary(match.link)
 
-if(!data) return
+if(!data){
+console.log("No commentary data")
+return
+}
 
-const audio = await generateAudio(data.commentary)
+let commentary = data.commentary
+let score = data.score
+
+if(!commentary || commentary.trim()===""){
+console.log("Skipping empty commentary")
+return
+}
+
+let audio = null
+
+try{
+
+audio = await generateAudio(commentary)
+
+}catch(e){
+
+console.log("Audio generation failed:",e.message)
+
+}
+
+/* BROADCAST */
 
 broadcastCommentary({
-teams: match.match,
-score: data.score,
-commentary: data.commentary,
-audio: audio
+teams:match.match,
+score:score || "",
+commentary:commentary,
+audio:audio
 })
 
-console.log("Voice commentary:",data.commentary)
+console.log("Broadcasting:",commentary)
 
 }catch(err){
 
