@@ -1,43 +1,38 @@
-const WebSocket = require("ws")
+const WebSocket = require("ws");
 
-let wss
+let wss = null;
 
-function startWebSocket(server){
+function startWebSocket(server) {
+  wss = new WebSocket.Server({ server });
 
-wss = new WebSocket.Server({ server })
+  console.log("WebSocket server started");
 
-wss.on("connection",(ws)=>{
+  wss.on("connection", (ws) => {
+    console.log("Client connected to WebSocket");
 
-console.log("Overlay connected")
-
-})
-
+    ws.on("close", () => {
+      console.log("Client disconnected");
+    });
+  });
 }
 
-function broadcastCommentary(data){
+/**
+ * Broadcast commentary + score updates to all connected clients
+ * in EXACT format overlay.html expects.
+ */
+function broadcastCommentary(data) {
+  if (!wss) return;
 
-if(!wss){
-console.log("WebSocket not started")
-return
-}
+  const message = JSON.stringify(data);
 
-console.log("Broadcasting commentary:", data)
-
-const message = JSON.stringify(data)
-
-wss.clients.forEach(client => {
-
-if(client.readyState === WebSocket.OPEN){
-
-client.send(message)
-
-}
-
-})
-
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
 }
 
 module.exports = {
-startWebSocket,
-broadcastCommentary
-}
+  startWebSocket,
+  broadcastCommentary
+};
