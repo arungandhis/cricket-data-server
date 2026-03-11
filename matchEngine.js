@@ -7,11 +7,13 @@ let matchInterval = null;
 let lastCommentary = null;
 
 /**
- * Fetch Cricbuzz miniscore (score, batsmen, bowler)
+ * Fetch miniscore from the SAME commentary endpoint
+ * (Correct Cricbuzz endpoint — never 404s)
  */
 async function fetchMiniScore(matchId) {
   try {
-    const url = `https://www.cricbuzz.com/api/cricket-match/${matchId}`;
+    const url = `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
+
     const res = await axios.get(url, {
       headers: {
         "User-Agent": "Mozilla/5.0",
@@ -19,9 +21,7 @@ async function fetchMiniScore(matchId) {
       }
     });
 
-    const data = res.data;
-    const ms = data.miniscore;
-
+    const ms = res.data.miniscore;
     if (!ms) return {};
 
     return {
@@ -79,7 +79,7 @@ function startLiveMatch(match) {
 
       lastCommentary = latestLine;
 
-      // 2️⃣ Fetch score + batsmen + bowler
+      // 2️⃣ Fetch score + batsmen + bowler from SAME endpoint
       const mini = await fetchMiniScore(matchId);
 
       // 3️⃣ Generate audio
@@ -106,6 +106,8 @@ function startLiveMatch(match) {
       console.log("Match engine error:", err.message);
     }
   }, 10000);
+
+  return matchInterval;
 }
 
 module.exports = { startLiveMatch };
