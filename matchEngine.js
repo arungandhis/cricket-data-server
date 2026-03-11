@@ -28,8 +28,16 @@ function startLiveMatch(match) {
     clearInterval(matchInterval);
   }
 
-  const matchUrl = match.url;
-  console.log("MATCH URL:", matchUrl);
+  //const matchUrl = match.url;
+  //console.log("MATCH URL:", matchUrl);
+  
+  const matchUrl =
+"https://www.cricbuzz.com/live-cricket-scores/" +
+match.matchId +
+"/commentary"
+
+console.log("MATCH URL:", matchUrl)
+  
 
   lastCommentary = null;
 
