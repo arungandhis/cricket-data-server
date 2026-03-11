@@ -1,8 +1,9 @@
 const { broadcastCommentary } = require("./websocket")
+const fetchCommentary = require("./commentaryScraper")
 
 let matchInterval = null
 
-/* TEST MATCH ENGINE */
+/* TEST MATCH */
 
 function startTestMatch(){
 
@@ -14,81 +15,49 @@ clearInterval(matchInterval)
 
 matchInterval = setInterval(()=>{
 
-const commentaryLines = [
-
-"Kohli drives through covers for FOUR!",
-"Starc bowls a perfect yorker!",
-"That's smashed for SIX!",
-"Brilliant catch at mid wicket!",
-"Excellent running between the wickets!",
-"Short ball pulled away for FOUR!",
-"Massive SIX over long-on!"
-
-]
-
-const commentary =
-commentaryLines[Math.floor(Math.random()*commentaryLines.length)]
-
-const runs = Math.floor(Math.random()*200)
-const wickets = Math.floor(Math.random()*10)
-const overs = (Math.random()*20).toFixed(1)
-
-const score = runs + "/" + wickets + " (" + overs + ")"
-
-console.log("Broadcasting test commentary:", commentary)
-
 broadcastCommentary({
-teams: "India vs Australia",
-score: score,
-commentary: commentary
+teams:"India vs Australia",
+score:"145/3 (15.4)",
+commentary:"Kohli drives through covers for FOUR!"
 })
 
 },8000)
 
 }
 
-/* LIVE MATCH ENGINE */
+/* LIVE MATCH */
 
 function startLiveMatch(match){
 
-console.log("LIVE MATCH started:", match.match)
+console.log("LIVE MATCH started:",match.match)
 
 if(matchInterval){
 clearInterval(matchInterval)
 }
 
-matchInterval = setInterval(()=>{
+matchInterval = setInterval(async ()=>{
 
-const commentaryLines = [
+try{
 
-"Driven beautifully through covers",
-"Good length delivery defended",
-"That's flicked to mid wicket",
-"Excellent yorker from the bowler",
-"Pulled away towards square leg",
-"Big appeal for LBW!",
-"Quick single taken"
+const data = await fetchCommentary(match.link)
 
-]
-
-const commentary =
-commentaryLines[Math.floor(Math.random()*commentaryLines.length)]
-
-const runs = Math.floor(Math.random()*200)
-const wickets = Math.floor(Math.random()*10)
-const overs = (Math.random()*20).toFixed(1)
-
-const score = runs + "/" + wickets + " (" + overs + ")"
-
-console.log("Broadcasting live commentary:", commentary)
+if(!data) return
 
 broadcastCommentary({
 teams: match.match,
-score: score,
-commentary: commentary
+score: data.score,
+commentary: data.commentary
 })
 
-},10000)
+console.log("Broadcasting:",data.commentary)
+
+}catch(err){
+
+console.log("Match engine error:",err.message)
+
+}
+
+},12000)
 
 }
 
