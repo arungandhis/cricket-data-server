@@ -95,6 +95,7 @@
   <button class="filter active" onclick="setFilter('all')">ALL</button>
   <button class="filter" onclick="setFilter('live')">LIVE ONLY</button>
   <button class="filter" onclick="setFilter('completed')">COMPLETED ONLY</button>
+  <button class="filter" onclick="setFilter('upcoming')">UPCOMING ONLY</button>
 </div>
 
 <div id="matchList">Loading matches...</div>
@@ -125,6 +126,44 @@ function getMatchType(title) {
   return "";
 }
 
+function isLive(status) {
+  const s = status.toLowerCase();
+  return (
+    s.includes("live") ||
+    s.includes("day") ||
+    s.includes("session") ||
+    s.includes("stumps") ||
+    s.includes("drinks") ||
+    s.includes("break") ||
+    s.includes("tea") ||
+    s.includes("lunch")
+  );
+}
+
+function isCompleted(status) {
+  const s = status.toLowerCase();
+  return (
+    s.includes("won") ||
+    s.includes("lost") ||
+    s.includes("result") ||
+    s.includes("tie") ||
+    s.includes("draw")
+  );
+}
+
+function isUpcoming(status) {
+  const s = status.toLowerCase();
+  return (
+    s.includes("yet to begin") ||
+    s.includes("starts in") ||
+    s.includes("start at") ||
+    s.includes("starts at") ||
+    s.includes("upcoming") ||
+    s.includes("preview") ||
+    s.includes("toss at")
+  );
+}
+
 async function loadMatches() {
   const res = await fetch("/matches");
   const matches = await res.json();
@@ -139,11 +178,15 @@ function renderMatches() {
   let filtered = allMatches;
 
   if (currentFilter === "live") {
-    filtered = filtered.filter(m => m.status.toLowerCase().includes("live"));
+    filtered = filtered.filter(m => isLive(m.status));
   }
 
   if (currentFilter === "completed") {
-    filtered = filtered.filter(m => m.status.toLowerCase().includes("won") || m.status.toLowerCase().includes("result"));
+    filtered = filtered.filter(m => isCompleted(m.status));
+  }
+
+  if (currentFilter === "upcoming") {
+    filtered = filtered.filter(m => isUpcoming(m.status));
   }
 
   if (filtered.length === 0) {
