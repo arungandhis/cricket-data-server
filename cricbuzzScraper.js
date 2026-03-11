@@ -1,44 +1,59 @@
 const axios = require("axios");
 
-let lastKnownId = null;
+let lastKnownIds = new Map();
 
 /**
- * Fetch list of matches from Cricbuzz
+ * Fetch list of VALID matches from Cricbuzz
+ * Filters out:
+ *  - matches without matchId
+ *  - matches without teams
+ *  - placeholder / series headers
  */
 async function fetchMatches() {
-  const url = "https://www.cricbuzz.com/api/matches";
+  try {
+    const url = "https://www.cricbuzz.com/api/matches";
 
-  const res = await axios.get(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      "Accept": "application/json"
-    }
-  });
-
-  const data = res.data;
-  const matches = [];
-
-  if (data.typeMatches) {
-    data.typeMatches.forEach(group => {
-      if (group.seriesMatches) {
-        group.seriesMatches.forEach(series => {
-          if (series.seriesAdWrapper && series.seriesAdWrapper.matches) {
-            series.seriesAdWrapper.matches.forEach(m => {
-              const info = m.matchInfo;
-
-              matches.push({
-                match: `${info.matchDesc} - ${info.team1.teamName} vs ${info.team2.teamName}`,
-                matchId: info.matchId,
-                link: info.matchId
-              });
-            });
-          }
-        });
+    const res = await axios.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
       }
     });
-  }
 
-  return matches;
+    const data = res.data;
+    const matches = [];
+
+    if (!data.typeMatches) return matches;
+
+    for (const group of data.typeMatches) {
+      if (!group.seriesMatches) continue;
+
+      for (const series of group.seriesMatches) {
+        const wrapper = series.seriesAdWrapper;
+        if (!wrapper || !wrapper.matches) continue;
+
+        for (const m of wrapper.matches) {
+          const info = m.matchInfo;
+          if (!info) continue;
+
+          // Skip invalid entries
+          if (!info.matchId) continue;
+          if (!info.team1 || !info.team2) continue;
+
+          matches.push({
+            match: `${info.matchDesc} - ${info.team1.teamName} vs ${info.team2.teamName}`,
+            matchId: info.matchId
+          });
+        }
+      }
+    }
+
+    return matches;
+
+  } catch (err) {
+    console.log("Match fetch error:", err.message);
+    return [];
+  }
 }
 
 /**
@@ -63,6 +78,7 @@ async function fetchCommentary(matchId) {
 
 /**
  * Fetch LIVE commentary from Cricbuzz
+ * Uses correct endpoint: /commentary/<matchId>
  */
 async function fetchLiveCommentary(matchId) {
   const url = `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
@@ -83,14 +99,15 @@ async function fetchLiveCommentary(matchId) {
   }
 
   const latest = lines[0];
+  const lastId = lastKnownIds.get(matchId);
 
   // No new commentary since last poll
-  if (latest.id === lastKnownId) {
+  if (latest.id === lastId) {
     console.log("No new commentary data");
     return null;
   }
 
-  lastKnownId = latest.id;
+  lastKnownIds.set(matchId, latest.id);
 
   return {
     type: "live",
