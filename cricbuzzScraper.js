@@ -3,11 +3,6 @@ const cheerio = require("cheerio");
 
 const BASE = "https://www.cricbuzz.com";
 
-let lastKnownIds = new Map();
-
-/**
- * Common headers to look like a browser
- */
 const HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -15,9 +10,11 @@ const HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
+let lastKnownIds = new Map();
+
 /**
- * Fetch list of matches by scraping live scores page
- * Supports live + recent + upcoming
+ * Scrape match list from live scores page
+ * Returns: [{ match, series, status, matchId, url }]
  */
 async function fetchMatches() {
   try {
@@ -27,29 +24,29 @@ async function fetchMatches() {
 
     const matches = [];
 
-    // Cricbuzz groups matches in blocks; we target match cards
     $(".cb-mtch-lst").each((_, block) => {
-      const seriesName = $(block).find(".cb-lv-scr-mtch-hdr").text().trim();
+      const seriesName = $(block).find(".cb-lv-scr-mtch-hdr").first().text().trim();
 
       $(block)
         .find(".cb-mtch-lst-li")
         .each((__, el) => {
-          const matchLink = $(el).find("a.cb-lv-scrs-link").attr("href");
+          const linkEl = $(el).find("a.cb-lv-scrs-link");
+          const matchLink = linkEl.attr("href");
           if (!matchLink) return;
 
           const fullUrl = BASE + matchLink;
-          const title = $(el).find(".cb-lv-scr-mtch-hdr").text().trim() ||
-                        $(el).find(".cb-lv-scr-mtch-hdr span").text().trim();
 
-          const teamsText = $(el).find(".cb-lv-scr-mtch-hdr").next().text().trim();
+          const title =
+            $(el).find(".cb-lv-scr-mtch-hdr").first().text().trim() ||
+            linkEl.text().trim();
+
           const status = $(el).find(".cb-lv-scrs-col").last().text().trim();
 
-          // Extract a pseudo matchId from URL (e.g., /live-cricket-scores/12345/...)
           const idMatch = matchLink.match(/\/(\d+)\//);
           const matchId = idMatch ? idMatch[1] : matchLink;
 
           matches.push({
-            match: title || teamsText || "Cricket Match",
+            match: title || "Cricket Match",
             series: seriesName,
             status,
             matchId,
@@ -67,23 +64,25 @@ async function fetchMatches() {
 
 /**
  * High-level: fetch commentary + rich info for a match
- * Works for both live and completed matches
+ * Accepts matchId or full URL
  */
 async function fetchCommentary(matchIdOrUrl) {
   try {
-    const url = typeof matchIdOrUrl === "string" && matchIdOrUrl.startsWith("http")
-      ? matchIdOrUrl
-      : `${BASE}/live-cricket-scores/${matchIdOrUrl}`;
+    const url =
+      typeof matchIdOrUrl === "string" && matchIdOrUrl.startsWith("http")
+        ? matchIdOrUrl
+        : `${BASE}/live-cricket-scores/${matchIdOrUrl}`;
 
     const res = await axios.get(url, { headers: HEADERS });
     const $ = cheerio.load(res.data);
 
-    // Try live layout first; if not found, fall back to completed layout
+    // Try live layout first
     const liveData = parseLiveLayout($);
     if (liveData && liveData.commentary.length > 0) {
       return liveData;
     }
 
+    // Fallback to completed layout
     const completedData = parseCompletedLayout($);
     return completedData;
   } catch (err) {
@@ -113,7 +112,7 @@ function parseLiveLayout($) {
 
   if (!lines.length) return null;
 
-  const latestId = lines[0]; // use text as pseudo-id
+  const latestId = lines[0];
   const lastId = lastKnownIds.get("live");
   if (latestId === lastId) {
     console.log("No new live commentary (HTML)");
@@ -121,10 +120,12 @@ function parseLiveLayout($) {
   }
   lastKnownIds.set("live", latestId);
 
-  // Score + batsmen + bowler from mini widgets
-  const score = $(".cb-min-bat-rw").first().text().trim() ||
-                $(".cb-font-18.cb-col-100.cb-ltst-wgt-hdr").first().text().trim();
+  // Score
+  let score =
+    $(".cb-font-18.cb-col-100.cb-ltst-wgt-hdr").first().text().trim() ||
+    $(".cb-min-bat-rw").first().text().trim();
 
+  // Batsmen
   const batsmen = [];
   $(".cb-min-bat-rw").each((_, el) => {
     const name = $(el).find(".cb-col.cb-col-27").text().trim();
@@ -133,6 +134,7 @@ function parseLiveLayout($) {
     if (name) batsmen.push(`${name} ${runs} (${balls})`);
   });
 
+  // Bowler
   let bowler = "";
   const bowlerRow = $(".cb-min-bwl-rw").first();
   if (bowlerRow.length) {
@@ -158,12 +160,12 @@ function parseLiveLayout($) {
  */
 function parseCompletedLayout($) {
   const lines = [];
+
   $(".cb-col.cb-col-100.cb-col-rt .cb-col.cb-col-100").each((_, el) => {
     const text = $(el).find(".cb-com-ln").text().trim();
     if (text) lines.push(text);
   });
 
-  // Fallback: generic commentary paragraphs
   if (!lines.length) {
     $("p.cb-com-ln").each((_, el) => {
       const text = $(el).text().trim();
@@ -178,13 +180,13 @@ function parseCompletedLayout($) {
   }
   lastKnownIds.set("completed", latestId);
 
-  // Score from summary / result header
+  // Score / result
   let score = $(".cb-font-18.cb-col-100.cb-ltst-wgt-hdr").first().text().trim();
   if (!score) {
     score = $(".cb-scrcrd-status").first().text().trim();
   }
 
-  // Batsmen / bowler from scorecard rows
+  // Batsmen from scorecard
   const batsmen = [];
   $(".cb-col.cb-col-100.cb-scrd-itms").each((_, el) => {
     const name = $(el).find(".cb-col.cb-col-27").text().trim();
@@ -193,10 +195,11 @@ function parseCompletedLayout($) {
     if (name && runs) batsmen.push(`${name} ${runs} (${balls})`);
   });
 
+  // Bowler from bowling card
   let bowler = "";
-  const bwlRow = $(".cb-col.cb-col-100.cb-scrd-itms").filter((_, el) =>
-    $(el).find(".cb-col.cb-col-40").text().trim()
-  ).first();
+  const bwlRow = $(".cb-col.cb-col-100.cb-scrd-itms")
+    .filter((_, el) => $(el).find(".cb-col.cb-col-40").text().trim())
+    .first();
 
   if (bwlRow.length) {
     const name = bwlRow.find(".cb-col.cb-col-40").text().trim();
