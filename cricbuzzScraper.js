@@ -10,9 +10,9 @@ const HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
-/**
- * UNIVERSAL MATCH SCRAPER
- */
+/* -------------------------------------------------------
+   MATCH LIST SCRAPER (already working)
+-------------------------------------------------------- */
 async function fetchMatches() {
   try {
     const url = `${BASE}/cricket-match/live-scores`;
@@ -69,9 +69,9 @@ async function fetchMatches() {
   }
 }
 
-/**
- * COMMENTARY SCRAPER
- */
+/* -------------------------------------------------------
+   COMMENTARY SCRAPER (FIXED)
+-------------------------------------------------------- */
 async function fetchCommentary(matchUrl) {
   try {
     const res = await axios.get(matchUrl, { headers: HEADERS });
@@ -83,23 +83,35 @@ async function fetchCommentary(matchUrl) {
       return live;
     }
 
-    // Fallback to completed layout
+    // Try completed layout
     const completed = parseCompletedLayout($);
-    return completed;
+    if (completed && completed.commentary.length > 0) {
+      return completed;
+    }
+
+    console.log("SCRAPER FAILED — NO COMMENTARY FOUND");
+    return { commentary: [] };
+
   } catch (err) {
     console.log("Commentary fetch error:", err.message);
     return { commentary: [] };
   }
 }
 
-/**
- * NEW LIVE COMMENTARY PARSER
- */
+/* -------------------------------------------------------
+   LIVE COMMENTARY PARSER (2025–2026 layout)
+-------------------------------------------------------- */
 function parseLiveLayout($) {
   const lines = [];
 
-  // NEW Cricbuzz live commentary selector
+  // NEW live commentary block
   $(".cb-comm-ltst .cb-com-ln").each((_, el) => {
+    const text = $(el).text().trim();
+    if (text) lines.push(text);
+  });
+
+  // Mobile fallback
+  $(".commtext").each((_, el) => {
     const text = $(el).text().trim();
     if (text) lines.push(text);
   });
@@ -115,21 +127,29 @@ function parseLiveLayout($) {
   };
 }
 
-/**
- * NEW COMPLETED MATCH COMMENTARY PARSER
- */
+/* -------------------------------------------------------
+   COMPLETED MATCH PARSER (2025–2026 layout)
+-------------------------------------------------------- */
 function parseCompletedLayout($) {
   const lines = [];
 
-  // NEW Cricbuzz completed commentary selector
+  // NEW completed commentary block
   $(".cb-col.cb-col-100.cb-col-rt .cb-com-ln").each((_, el) => {
     const text = $(el).text().trim();
     if (text) lines.push(text);
   });
 
-  // Fallback selector
+  // Fallback paragraphs
   if (!lines.length) {
     $("p.cb-com-ln").each((_, el) => {
+      const text = $(el).text().trim();
+      if (text) lines.push(text);
+    });
+  }
+
+  // Mobile fallback
+  if (!lines.length) {
+    $(".commtext").each((_, el) => {
       const text = $(el).text().trim();
       if (text) lines.push(text);
     });
@@ -144,20 +164,21 @@ function parseCompletedLayout($) {
   };
 }
 
-/**
- * SCORE EXTRACTOR
- */
+/* -------------------------------------------------------
+   SCORE EXTRACTOR
+-------------------------------------------------------- */
 function extractScore($) {
   return (
     $(".cb-font-18").first().text().trim() ||
     $(".cb-min-bat-rw").first().text().trim() ||
+    $(".cb-col.cb-col-67").first().text().trim() ||
     ""
   );
 }
 
-/**
- * BATSMEN EXTRACTOR
- */
+/* -------------------------------------------------------
+   BATSMEN EXTRACTOR
+-------------------------------------------------------- */
 function extractBatsmen($) {
   const batsmen = [];
 
@@ -172,9 +193,9 @@ function extractBatsmen($) {
   return batsmen;
 }
 
-/**
- * BOWLER EXTRACTOR
- */
+/* -------------------------------------------------------
+   BOWLER EXTRACTOR
+-------------------------------------------------------- */
 function extractBowler($) {
   const row = $(".cb-min-bwl-rw").first();
   if (!row.length) return "";
