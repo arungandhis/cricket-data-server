@@ -1,41 +1,51 @@
 const axios = require("axios")
 const cheerio = require("cheerio")
 
-async function fetchCommentary(link){
+async function fetchCommentary(url){
 
 try{
 
-const response = await axios.get(link,{
+const response = await axios.get(url,{
 headers:{
-"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+"Accept-Language":"en-US,en;q=0.9"
 }
 })
 
-const $ = cheerio.load(response.data)
+const html = response.data
+const $ = cheerio.load(html)
 
 /* COMMENTARY */
 
 let commentary = ""
 
-$(".cb-col.cb-col-90.cb-com-ln").first().each((i,el)=>{
+$(".cb-com-ln").first().each((i,el)=>{
 commentary = $(el).text().trim()
 })
 
 /* SCORE */
 
-let score = $(".cb-font-20.text-bold").first().text().trim()
+let score = $(".cb-font-20").first().text().trim()
 
 /* BATSMEN */
 
 let batsmen = []
 
-$(".cb-col.cb-col-50").slice(0,2).each((i,el)=>{
+$(".cb-scrd-itms").slice(0,2).each((i,el)=>{
 batsmen.push($(el).text().replace(/\n/g," ").trim())
 })
 
 /* BOWLER */
 
-let bowler = $(".cb-col.cb-col-33").first().text().replace(/\n/g," ").trim()
+let bowler = ""
+
+$(".cb-scrd-itms").slice(2,3).each((i,el)=>{
+bowler = $(el).text().replace(/\n/g," ").trim()
+})
+
+if(!commentary){
+console.log("Empty commentary from scraper")
+}
 
 return {
 commentary,
