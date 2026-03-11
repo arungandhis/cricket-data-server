@@ -17,9 +17,11 @@ return null
 /* CORRECT CRICBUZZ API */
 
 const api =
-"https://www.cricbuzz.com/mcenter/v1/" +
-matchId +
+"https://www.cricbuzz.com/live-cricket-scores/" +matchId +
 "/commentary"
+
+
+// https://www.cricbuzz.com/live-cricket-scores/147863/commentary
 
 const response = await axios.get(api,{
 headers:{
