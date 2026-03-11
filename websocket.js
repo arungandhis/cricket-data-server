@@ -6,7 +6,7 @@ function startWebSocket(server){
 
 wss = new WebSocket.Server({ server })
 
-wss.on("connection", (ws) => {
+wss.on("connection",(ws)=>{
 
 console.log("Overlay connected")
 
@@ -17,18 +17,20 @@ console.log("Overlay connected")
 function broadcastCommentary(data){
 
 if(!wss){
-console.log("WebSocket not initialized")
+console.log("WebSocket not started")
 return
 }
 
-console.log("Broadcasting to overlays:", data)
+console.log("Broadcasting commentary:", data)
 
 const message = JSON.stringify(data)
 
 wss.clients.forEach(client => {
 
 if(client.readyState === WebSocket.OPEN){
+
 client.send(message)
+
 }
 
 })
