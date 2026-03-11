@@ -1,15 +1,17 @@
 const gTTS = require("gtts")
 const path = require("path")
 
-async function generateAudio(text){
+async function generateCommentaryAudio(text){
 
 return new Promise((resolve,reject)=>{
 
-const file = path.join(__dirname,"public","commentary.mp3")
+try{
 
-const gtts = new gTTS(text,"en")
+const filePath = path.join(__dirname,"public","commentary.mp3")
 
-gtts.save(file,function(err){
+const tts = new gTTS(text,"en")
+
+tts.save(filePath,(err)=>{
 
 if(err){
 reject(err)
@@ -20,8 +22,12 @@ resolve("/commentary.mp3")
 
 })
 
+}catch(err){
+reject(err)
+}
+
 })
 
 }
 
-module.exports = generateAudio
+module.exports = generateCommentaryAudio
