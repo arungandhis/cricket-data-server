@@ -1,144 +1,222 @@
 const axios = require("axios");
+const cheerio = require("cheerio");
+
+const BASE = "https://www.cricbuzz.com";
 
 let lastKnownIds = new Map();
 
 /**
- * Fetch list of VALID matches from Cricbuzz
- * Filters out:
- *  - matches without matchId
- *  - matches without teams
- *  - placeholder / series headers
+ * Common headers to look like a browser
+ */
+const HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
+/**
+ * Fetch list of matches by scraping live scores page
+ * Supports live + recent + upcoming
  */
 async function fetchMatches() {
   try {
-    const url = "https://www.cricbuzz.com/api/matches";
+    const url = `${BASE}/cricket-match/live-scores`;
+    const res = await axios.get(url, { headers: HEADERS });
+    const $ = cheerio.load(res.data);
 
-    const res = await axios.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
-      }
-    });
-
-    const data = res.data;
     const matches = [];
 
-    if (!data.typeMatches) return matches;
+    // Cricbuzz groups matches in blocks; we target match cards
+    $(".cb-mtch-lst").each((_, block) => {
+      const seriesName = $(block).find(".cb-lv-scr-mtch-hdr").text().trim();
 
-    for (const group of data.typeMatches) {
-      if (!group.seriesMatches) continue;
+      $(block)
+        .find(".cb-mtch-lst-li")
+        .each((__, el) => {
+          const matchLink = $(el).find("a.cb-lv-scrs-link").attr("href");
+          if (!matchLink) return;
 
-      for (const series of group.seriesMatches) {
-        const wrapper = series.seriesAdWrapper;
-        if (!wrapper || !wrapper.matches) continue;
+          const fullUrl = BASE + matchLink;
+          const title = $(el).find(".cb-lv-scr-mtch-hdr").text().trim() ||
+                        $(el).find(".cb-lv-scr-mtch-hdr span").text().trim();
 
-        for (const m of wrapper.matches) {
-          const info = m.matchInfo;
-          if (!info) continue;
+          const teamsText = $(el).find(".cb-lv-scr-mtch-hdr").next().text().trim();
+          const status = $(el).find(".cb-lv-scrs-col").last().text().trim();
 
-          // Skip invalid entries
-          if (!info.matchId) continue;
-          if (!info.team1 || !info.team2) continue;
+          // Extract a pseudo matchId from URL (e.g., /live-cricket-scores/12345/...)
+          const idMatch = matchLink.match(/\/(\d+)\//);
+          const matchId = idMatch ? idMatch[1] : matchLink;
 
           matches.push({
-            match: `${info.matchDesc} - ${info.team1.teamName} vs ${info.team2.teamName}`,
-            matchId: info.matchId
+            match: title || teamsText || "Cricket Match",
+            series: seriesName,
+            status,
+            matchId,
+            url: fullUrl,
           });
-        }
-      }
-    }
+        });
+    });
 
     return matches;
-
   } catch (err) {
-    console.log("Match fetch error:", err.message);
+    console.log("Match fetch error (HTML):", err.message);
     return [];
   }
 }
 
 /**
- * Fetch commentary (live first, fallback to old)
+ * High-level: fetch commentary + rich info for a match
+ * Works for both live and completed matches
  */
-async function fetchCommentary(matchId) {
+async function fetchCommentary(matchIdOrUrl) {
   try {
-    const live = await fetchLiveCommentary(matchId);
+    const url = typeof matchIdOrUrl === "string" && matchIdOrUrl.startsWith("http")
+      ? matchIdOrUrl
+      : `${BASE}/live-cricket-scores/${matchIdOrUrl}`;
 
-    if (live && live.commentary.length > 0) {
-      return live;
+    const res = await axios.get(url, { headers: HEADERS });
+    const $ = cheerio.load(res.data);
+
+    // Try live layout first; if not found, fall back to completed layout
+    const liveData = parseLiveLayout($);
+    if (liveData && liveData.commentary.length > 0) {
+      return liveData;
     }
 
-    console.log("No new live commentary. Fetching old commentary...");
-    return await fetchOldCommentary(matchId);
-
+    const completedData = parseCompletedLayout($);
+    return completedData;
   } catch (err) {
-    console.log("Live commentary failed, loading old commentary:", err.message);
-    return await fetchOldCommentary(matchId);
+    console.log("Commentary fetch error (HTML):", err.message);
+    return {
+      type: "error",
+      commentary: [],
+      score: "",
+      batsmen: [],
+      bowler: "",
+    };
   }
 }
 
 /**
- * Fetch LIVE commentary from Cricbuzz
- * Uses correct endpoint: /commentary/<matchId>
+ * Parse LIVE match layout
  */
-async function fetchLiveCommentary(matchId) {
-  const url = `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
+function parseLiveLayout($) {
+  const commentaryBlocks = $(".cb-col.cb-col-100.cb-ltst-wgt-hdr");
+  if (!commentaryBlocks.length) return null;
 
-  const res = await axios.get(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      "Accept": "application/json"
-    }
+  const lines = [];
+  commentaryBlocks.each((_, el) => {
+    const text = $(el).find(".cb-col.cb-col-90.cb-com-ln").text().trim();
+    if (text) lines.push(text);
   });
 
-  const data = res.data;
-  const lines = data.comm_lines || [];
+  if (!lines.length) return null;
 
-  if (!lines.length) {
-    console.log("No commentary in API");
-    return null;
+  const latestId = lines[0]; // use text as pseudo-id
+  const lastId = lastKnownIds.get("live");
+  if (latestId === lastId) {
+    console.log("No new live commentary (HTML)");
+    return { type: "live", commentary: [] };
   }
+  lastKnownIds.set("live", latestId);
 
-  const latest = lines[0];
-  const lastId = lastKnownIds.get(matchId);
+  // Score + batsmen + bowler from mini widgets
+  const score = $(".cb-min-bat-rw").first().text().trim() ||
+                $(".cb-font-18.cb-col-100.cb-ltst-wgt-hdr").first().text().trim();
 
-  // No new commentary since last poll
-  if (latest.id === lastId) {
-    console.log("No new commentary data");
-    return null;
+  const batsmen = [];
+  $(".cb-min-bat-rw").each((_, el) => {
+    const name = $(el).find(".cb-col.cb-col-27").text().trim();
+    const runs = $(el).find(".cb-col.cb-col-10.text-right").first().text().trim();
+    const balls = $(el).find(".cb-col.cb-col-10.text-right").eq(1).text().trim();
+    if (name) batsmen.push(`${name} ${runs} (${balls})`);
+  });
+
+  let bowler = "";
+  const bowlerRow = $(".cb-min-bwl-rw").first();
+  if (bowlerRow.length) {
+    const name = bowlerRow.find(".cb-col.cb-col-40").text().trim();
+    const overs = bowlerRow.find(".cb-col.cb-col-10.text-right").first().text().trim();
+    const maidens = bowlerRow.find(".cb-col.cb-col-10.text-right").eq(1).text().trim();
+    const runs = bowlerRow.find(".cb-col.cb-col-10.text-right").eq(2).text().trim();
+    const wkts = bowlerRow.find(".cb-col.cb-col-10.text-right").eq(3).text().trim();
+    if (name) bowler = `${name} ${overs}-${maidens}-${runs}-${wkts}`;
   }
-
-  lastKnownIds.set(matchId, latest.id);
 
   return {
     type: "live",
-    latestId: latest.id,
-    commentary: lines.map(l => l.comm)
+    commentary: lines,
+    score,
+    batsmen,
+    bowler,
   };
 }
 
 /**
- * Fetch FULL OLD commentary (works for completed matches)
+ * Parse COMPLETED match layout
  */
-async function fetchOldCommentary(matchId) {
-  const url = `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
-
-  const res = await axios.get(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      "Accept": "application/json"
-    }
+function parseCompletedLayout($) {
+  const lines = [];
+  $(".cb-col.cb-col-100.cb-col-rt .cb-col.cb-col-100").each((_, el) => {
+    const text = $(el).find(".cb-com-ln").text().trim();
+    if (text) lines.push(text);
   });
 
-  const data = res.data;
-  const lines = data.comm_lines || [];
+  // Fallback: generic commentary paragraphs
+  if (!lines.length) {
+    $("p.cb-com-ln").each((_, el) => {
+      const text = $(el).text().trim();
+      if (text) lines.push(text);
+    });
+  }
+
+  const latestId = lines[0] || "";
+  const lastId = lastKnownIds.get("completed");
+  if (latestId && latestId === lastId) {
+    console.log("No new completed commentary (HTML)");
+  }
+  lastKnownIds.set("completed", latestId);
+
+  // Score from summary / result header
+  let score = $(".cb-font-18.cb-col-100.cb-ltst-wgt-hdr").first().text().trim();
+  if (!score) {
+    score = $(".cb-scrcrd-status").first().text().trim();
+  }
+
+  // Batsmen / bowler from scorecard rows
+  const batsmen = [];
+  $(".cb-col.cb-col-100.cb-scrd-itms").each((_, el) => {
+    const name = $(el).find(".cb-col.cb-col-27").text().trim();
+    const runs = $(el).find(".cb-col.cb-col-8.text-right").first().text().trim();
+    const balls = $(el).find(".cb-col.cb-col-8.text-right").eq(1).text().trim();
+    if (name && runs) batsmen.push(`${name} ${runs} (${balls})`);
+  });
+
+  let bowler = "";
+  const bwlRow = $(".cb-col.cb-col-100.cb-scrd-itms").filter((_, el) =>
+    $(el).find(".cb-col.cb-col-40").text().trim()
+  ).first();
+
+  if (bwlRow.length) {
+    const name = bwlRow.find(".cb-col.cb-col-40").text().trim();
+    const overs = bwlRow.find(".cb-col.cb-col-8.text-right").first().text().trim();
+    const maidens = bwlRow.find(".cb-col.cb-col-8.text-right").eq(1).text().trim();
+    const runs = bwlRow.find(".cb-col.cb-col-8.text-right").eq(2).text().trim();
+    const wkts = bwlRow.find(".cb-col.cb-col-8.text-right").eq(3).text().trim();
+    if (name) bowler = `${name} ${overs}-${maidens}-${runs}-${wkts}`;
+  }
 
   return {
-    type: "old",
-    commentary: lines.map(l => l.comm)
+    type: "completed",
+    commentary: lines,
+    score,
+    batsmen,
+    bowler,
   };
 }
 
 module.exports = {
   fetchMatches,
-  fetchCommentary
+  fetchCommentary,
 };
