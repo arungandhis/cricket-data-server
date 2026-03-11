@@ -1,5 +1,6 @@
 const { broadcastCommentary } = require("./websocket")
 const fetchCommentary = require("./commentaryScraper")
+const generateAudio = require("./ttsEngine")
 
 let matchInterval = null
 
@@ -13,12 +14,17 @@ if(matchInterval){
 clearInterval(matchInterval)
 }
 
-matchInterval = setInterval(()=>{
+matchInterval = setInterval(async ()=>{
+
+const commentary = "Kohli drives beautifully through covers for FOUR"
+
+const audio = await generateAudio(commentary)
 
 broadcastCommentary({
 teams:"India vs Australia",
 score:"145/3 (15.4)",
-commentary:"Kohli drives through covers for FOUR!"
+commentary:commentary,
+audio:audio
 })
 
 },8000)
@@ -43,13 +49,16 @@ const data = await fetchCommentary(match.link)
 
 if(!data) return
 
+const audio = await generateAudio(data.commentary)
+
 broadcastCommentary({
 teams: match.match,
 score: data.score,
-commentary: data.commentary
+commentary: data.commentary,
+audio: audio
 })
 
-console.log("Broadcasting:",data.commentary)
+console.log("Voice commentary:",data.commentary)
 
 }catch(err){
 
