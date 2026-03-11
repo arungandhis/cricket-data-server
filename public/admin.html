@@ -1,68 +1,77 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-<title>Cricket Broadcast Admin</title>
+  <title>Admin Panel</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    button { padding: 10px 20px; margin: 10px 0; }
+    #log { border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: scroll; }
+  </style>
 </head>
-
 <body>
 
-<h2>Live Matches</h2>
+<h2>Cricket Data Server – Admin</h2>
 
-<div id="matches"></div>
+<button onclick="loadMatches()">Load Matches</button>
+
+<select id="matchList" style="width: 300px; margin-top: 10px;"></select>
+
+<br><br>
+
+<button onclick="startSelectedMatch()">Start Match</button>
+
+<h3>Logs</h3>
+<div id="log"></div>
 
 <script>
+const logBox = document.getElementById("log");
 
-async function loadMatches(){
-
- const res = await fetch("/matches")
-
- const matches = await res.json()
-
- const container=document.getElementById("matches")
-
- container.innerHTML=""
-
- matches.forEach(m=>{
-
-  const btn=document.createElement("button")
-
-  btn.innerText=m.match
-
-  btn.style.display="block"
-
-  btn.style.margin="10px"
-
-  btn.onclick=()=>startMatch(m.matchId)
-
-  container.appendChild(btn)
-
- })
-
+function log(msg) {
+  logBox.innerHTML += msg + "<br>";
+  logBox.scrollTop = logBox.scrollHeight;
 }
 
+async function loadMatches() {
+  log("Loading matches...");
 
-async function startMatch(matchId){
+  const res = await fetch("/matches");
+  const matches = await res.json();
 
- await fetch("/start-match",{
+  const list = document.getElementById("matchList");
+  list.innerHTML = "";
 
-  method:"POST",
+  matches.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = JSON.stringify(m);
+    opt.textContent = m.match;
+    list.appendChild(opt);
+  });
 
-  headers:{
-   "Content-Type":"application/json"
-  },
-
-  body:JSON.stringify({matchId})
-
- })
-
- alert("Match engine started")
-
+  log("Matches loaded");
 }
 
+async function startSelectedMatch() {
+  const list = document.getElementById("matchList");
+  const match = JSON.parse(list.value);
 
-loadMatches()
+  log("Starting match: " + match.match);
 
+  await fetch("/start-match", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(match)
+  });
+
+  log("Match started");
+}
+
+// WebSocket connection (auto wss:// on Render)
+const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+const ws = new WebSocket(`${wsProtocol}://${location.host}`);
+
+ws.onopen = () => log("WebSocket connected");
+ws.onmessage = (msg) => log("WS: " + msg.data);
+ws.onclose = () => log("WebSocket disconnected");
 </script>
 
 </body>
