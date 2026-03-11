@@ -1,63 +1,42 @@
 const { broadcastCommentary } = require("./websocket");
 const { fetchCommentary } = require("./cricbuzzScraper");
-const axios = require("axios");
 const generateAudio = require("./ttsEngine");
 
 let matchInterval = null;
 let lastCommentary = null;
 
 /**
- * Fetch miniscore from the SAME commentary endpoint
- * (Correct Cricbuzz endpoint — never 404s)
+ * Detect special events for overlay animations
  */
-async function fetchMiniScore(matchId) {
-  try {
-    const url = `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
+function detectEvent(text) {
+  const t = text.toLowerCase();
 
-    const res = await axios.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
-      }
-    });
+  if (t.includes("four") || t.includes("4 runs")) return "FOUR";
+  if (t.includes("six") || t.includes("6 runs")) return "SIX";
+  if (t.includes("out") || t.includes("wicket")) return "WICKET";
 
-    const ms = res.data.miniscore;
-    if (!ms) return {};
-
-    return {
-      score: `${ms.runs}/${ms.wickets} (${ms.overs})`,
-      batsmen: [
-        `${ms.batsmanStriker?.batName} ${ms.batsmanStriker?.runs} (${ms.batsmanStriker?.balls})`,
-        `${ms.batsmanNonStriker?.batName} ${ms.batsmanNonStriker?.runs} (${ms.batsmanNonStriker?.balls})`
-      ],
-      bowler: `${ms.bowlerStriker?.bowlName} ${ms.bowlerStriker?.overs}-${ms.bowlerStriker?.maidens}-${ms.bowlerStriker?.runs}-${ms.bowlerStriker?.wickets}`
-    };
-
-  } catch (err) {
-    console.log("MiniScore fetch error:", err.message);
-    return {};
-  }
+  return null;
 }
 
 /**
- * LIVE MATCH ENGINE
+ * Start live match engine using scraped match URL
  */
 function startLiveMatch(match) {
-  console.log("Launching LIVE MATCH engine");
+  console.log("Launching LIVE MATCH engine (HTML scraping)");
 
   if (matchInterval) {
     clearInterval(matchInterval);
   }
 
-  const matchId = match.matchId;
-  console.log("LIVE MATCH started:", matchId);
+  const matchUrl = match.url;
+  console.log("MATCH URL:", matchUrl);
 
   lastCommentary = null;
 
   matchInterval = setInterval(async () => {
     try {
-      // 1️⃣ Fetch commentary (live or old)
-      const result = await fetchCommentary(matchId);
+      // 1️⃣ Fetch commentary + score + batsmen + bowler
+      const result = await fetchCommentary(matchUrl);
 
       if (!result || !result.commentary || result.commentary.length === 0) {
         console.log("No commentary data");
@@ -79,8 +58,8 @@ function startLiveMatch(match) {
 
       lastCommentary = latestLine;
 
-      // 2️⃣ Fetch score + batsmen + bowler from SAME endpoint
-      const mini = await fetchMiniScore(matchId);
+      // 2️⃣ Detect special events (FOUR, SIX, WICKET)
+      const event = detectEvent(latestLine);
 
       // 3️⃣ Generate audio
       let audio = null;
@@ -92,15 +71,16 @@ function startLiveMatch(match) {
 
       // 4️⃣ Broadcast to overlay
       broadcastCommentary({
-        teams: match.match || "Live Match",
-        score: mini.score || "",
+        teams: match.match || "Cricket Match",
+        score: result.score || "",
         commentary: latestLine,
-        batsmen: mini.batsmen || [],
-        bowler: mini.bowler || "",
-        audio: audio
+        batsmen: result.batsmen || [],
+        bowler: result.bowler || "",
+        audio,
+        event, // NEW: overlay can animate based on this
       });
 
-      console.log("Broadcasting:", latestLine);
+      console.log("Broadcast:", latestLine);
 
     } catch (err) {
       console.log("Match engine error:", err.message);
