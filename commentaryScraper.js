@@ -1,51 +1,95 @@
 const axios = require("axios")
-const cheerio = require("cheerio")
 
 async function fetchCommentary(url){
 
 try{
 
-const response = await axios.get(url,{
+/* EXTRACT MATCH ID */
+
+const parts = url.split("/")
+const matchId = parts[parts.length-2] || parts[parts.length-1]
+
+/* CRICBUZZ COMMENTARY API */
+
+const api =
+"https://www.cricbuzz.com/api/cricket-match/commentary/" + matchId
+
+const response = await axios.get(api,{
 headers:{
 "User-Agent":"Mozilla/5.0",
-"Accept-Language":"en-US,en;q=0.9"
+"Accept":"application/json"
 }
 })
 
-const $ = cheerio.load(response.data)
+const data = response.data
 
-/* COMMENTARY */
+if(!data || !data.commentaryList || data.commentaryList.length === 0){
 
-let commentary = ""
+console.log("No commentary in API")
 
-$(".cb-com-ln").first().each((i,el)=>{
-commentary = $(el).text().trim()
-})
+return null
 
-/* SCORE */
-
-let score = $(".cb-nav-tab.active").text().trim()
-
-/* FALLBACK SCORE */
-
-if(!score){
-score = $(".cb-font-20").first().text().trim()
 }
 
-if(!commentary){
-console.log("Empty commentary from scraper")
+/* LATEST BALL */
+
+const latest = data.commentaryList[0]
+
+const commentary = latest.commText || ""
+
+const score =
+data.matchHeader?.status ||
+data.miniscore?.score || ""
+
+/* BATSMEN */
+
+let batsmen = []
+
+if(data.miniscore?.batsmanStriker){
+batsmen.push(
+data.miniscore.batsmanStriker.name +
+" " +
+data.miniscore.batsmanStriker.runs +
+"(" +
+data.miniscore.batsmanStriker.balls +
+")"
+)
 }
 
-/* RETURN */
+if(data.miniscore?.batsmanNonStriker){
+batsmen.push(
+data.miniscore.batsmanNonStriker.name +
+" " +
+data.miniscore.batsmanNonStriker.runs +
+"(" +
+data.miniscore.batsmanNonStriker.balls +
+")"
+)
+}
+
+/* BOWLER */
+
+let bowler = ""
+
+if(data.miniscore?.bowlerStriker){
+bowler =
+data.miniscore.bowlerStriker.name +
+" " +
+data.miniscore.bowlerStriker.wickets +
+"/" +
+data.miniscore.bowlerStriker.runs
+}
 
 return {
 commentary,
-score
+score,
+batsmen,
+bowler
 }
 
 }catch(err){
 
-console.log("Commentary fetch error:",err.message)
+console.log("Commentary API error:",err.message)
 
 return null
 
