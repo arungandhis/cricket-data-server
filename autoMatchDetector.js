@@ -1,11 +1,9 @@
 const fetchMatches = require("./cricbuzzScraper")
 const { startLiveMatch } = require("./matchEngine")
 
-let runningMatch = null
+let currentMatchId = null
 
 async function autoDetectMatches(){
-
-console.log("Auto match detector running")
 
 setInterval(async ()=>{
 
@@ -13,26 +11,22 @@ try{
 
 const matches = await fetchMatches()
 
-const liveMatch = matches.find(m => m.match.includes("LIVE"))
-
-if(!liveMatch){
-
-console.log("No live matches currently")
-
-return
-
-}
-
-if(runningMatch && runningMatch.matchId === liveMatch.matchId){
-
+if(!matches || matches.length === 0){
+console.log("No live matches")
 return
 }
 
-runningMatch = liveMatch
+const liveMatch = matches[0]
 
-console.log("New live match detected:",liveMatch.match)
+if(currentMatchId !== liveMatch.matchId){
+
+console.log("New match detected:", liveMatch.match)
+
+currentMatchId = liveMatch.matchId
 
 startLiveMatch(liveMatch)
+
+}
 
 }catch(err){
 
@@ -40,7 +34,7 @@ console.log("Auto detect error:",err.message)
 
 }
 
-},30000)
+},60000)
 
 }
 
