@@ -3,41 +3,75 @@
 
 <head>
 
-<title>Cricket Live Overlay</title>
+<title>AI Cricket Broadcast</title>
 
 <style>
 
 body{
-background:black;
-color:white;
-font-family:Arial;
-text-align:center;
 margin:0;
-padding:0;
+background:#0b0b0b;
+font-family:Arial;
+color:white;
+overflow:hidden;
 }
 
-#overlay{
+/* SCOREBAR */
+
+#scorebar{
+
 position:absolute;
 bottom:0;
 width:100%;
-background:rgba(0,0,0,0.8);
-padding:20px;
+background:linear-gradient(90deg,#111,#1c1c1c);
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+border-top:3px solid #00eaff;
+
 }
 
+/* TEAMS */
+
 #teams{
-font-size:30px;
+font-size:26px;
 font-weight:bold;
 }
 
+/* SCORE */
+
 #score{
-font-size:42px;
-margin-top:10px;
+font-size:36px;
+font-weight:bold;
+color:#00ffcc;
 }
 
-#commentary{
+/* COMMENTARY BAR */
+
+#commentaryBar{
+
+position:absolute;
+bottom:80px;
+width:100%;
+background:rgba(0,0,0,0.85);
+padding:15px;
 font-size:22px;
-margin-top:15px;
-color:#00ffcc;
+text-align:center;
+color:#ffd700;
+
+}
+
+/* LOGO */
+
+#logo{
+
+position:absolute;
+top:20px;
+left:20px;
+font-size:22px;
+font-weight:bold;
+color:#00eaff;
+
 }
 
 </style>
@@ -46,37 +80,45 @@ color:#00ffcc;
 
 <body>
 
-<div id="overlay">
+<div id="logo">
+AI Cricket Broadcast
+</div>
+
+<div id="commentaryBar">
+Waiting for commentary...
+</div>
+
+<div id="scorebar">
 
 <div id="teams">
-Waiting for match...
+Waiting for match
 </div>
 
-<div id="score"></div>
-
-<div id="commentary"></div>
+<div id="score">
+0/0
+</div>
 
 </div>
 
-<audio id="commentaryAudio"></audio>
+<audio id="audioPlayer"></audio>
 
 <script>
 
-/* CONNECT WEBSOCKET */
+/* WEBSOCKET CONNECTION */
 
 const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
-socket.onopen = () => {
+socket.onopen = ()=>{
 console.log("Overlay connected")
 }
 
-/* RECEIVE COMMENTARY */
+/* RECEIVE DATA */
 
 socket.onmessage = function(event){
 
 const data = JSON.parse(event.data)
 
-console.log("Overlay received:",data)
+console.log("Overlay data:",data)
 
 /* TEAMS */
 
@@ -93,33 +135,31 @@ document.getElementById("score").innerText = data.score
 /* COMMENTARY */
 
 if(data.commentary){
-document.getElementById("commentary").innerText = data.commentary
+document.getElementById("commentaryBar").innerText = data.commentary
 }
 
-/* AUDIO PLAYBACK */
+/* AUDIO */
 
 if(data.audio){
 
-const player = document.getElementById("commentaryAudio")
+const player = document.getElementById("audioPlayer")
 
 player.src = data.audio + "?t=" + Date.now()
 
-player.play().catch(e=>{
-console.log("Audio autoplay blocked")
-})
+player.play().catch(()=>{})
 
 }
 
 }
 
-/* ERROR HANDLING */
+/* SOCKET ERROR */
 
-socket.onerror = function(err){
-console.log("WebSocket error:",err)
+socket.onerror = (err)=>{
+console.log("Socket error",err)
 }
 
-socket.onclose = function(){
-console.log("WebSocket closed")
+socket.onclose = ()=>{
+console.log("Socket closed")
 }
 
 </script>
