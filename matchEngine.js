@@ -33,6 +33,8 @@ broadcastCommentary({
 teams:"India vs Australia",
 score:"145/3 (15.4)",
 commentary:commentary,
+batsmen:["Kohli 78 (44)","Rohit 45 (29)"],
+bowler:"Starc 3-0-24-1",
 audio:audio
 })
 
@@ -43,7 +45,9 @@ console.log("Audio error:",err.message)
 broadcastCommentary({
 teams:"India vs Australia",
 score:"145/3 (15.4)",
-commentary:commentary
+commentary:commentary,
+batsmen:["Kohli 78 (44)","Rohit 45 (29)"],
+bowler:"Starc 3-0-24-1"
 })
 
 }
@@ -83,7 +87,7 @@ console.log("Skipping empty commentary")
 return
 }
 
-/* PREVENT DUPLICATE COMMENTARY */
+/* PREVENT DUPLICATE BALL */
 
 if(commentary === lastCommentary){
 console.log("Duplicate commentary ignored")
@@ -100,13 +104,15 @@ audio = await generateAudio(commentary)
 console.log("Audio generation failed:",e.message)
 }
 
-/* BROADCAST */
-
 broadcastCommentary({
-teams:match.match,
-score:score || "",
-commentary:commentary,
-audio:audio
+
+teams: match.match,
+score: score || "",
+commentary: commentary,
+batsmen: data.batsmen || [],
+bowler: data.bowler || "",
+audio: audio
+
 })
 
 console.log("New ball commentary:",commentary)
