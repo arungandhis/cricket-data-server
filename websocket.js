@@ -18,13 +18,13 @@ function broadcastCommentary(data){
 
 if(!wss) return
 
-const payload = JSON.stringify(data)
+const message = JSON.stringify(data)
 
 wss.clients.forEach(client=>{
 
 if(client.readyState === WebSocket.OPEN){
 
-client.send(payload)
+client.send(message)
 
 }
 
