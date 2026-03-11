@@ -16,7 +16,7 @@ font-family:Arial;
 
 #teams{
 position:absolute;
-bottom:100px;
+bottom:120px;
 width:100%;
 text-align:center;
 font-size:28px;
@@ -25,16 +25,25 @@ font-weight:bold;
 
 #score{
 position:absolute;
-bottom:70px;
+bottom:90px;
 width:100%;
 text-align:center;
 font-size:36px;
 color:#00ffcc;
 }
 
+#commentary{
+position:absolute;
+bottom:150px;
+width:100%;
+text-align:center;
+font-size:22px;
+color:#ffd700;
+}
+
 #batsmen{
 position:absolute;
-bottom:40px;
+bottom:60px;
 width:100%;
 text-align:center;
 font-size:18px;
@@ -42,19 +51,10 @@ font-size:18px;
 
 #bowler{
 position:absolute;
-bottom:20px;
+bottom:30px;
 width:100%;
 text-align:center;
 font-size:18px;
-}
-
-#commentary{
-position:absolute;
-bottom:140px;
-width:100%;
-text-align:center;
-font-size:22px;
-color:#ffd700;
 }
 
 </style>
@@ -63,11 +63,11 @@ color:#ffd700;
 
 <body>
 
+<div id="commentary">Waiting for commentary...</div>
+
 <div id="teams">Waiting for match...</div>
 
 <div id="score"></div>
-
-<div id="commentary">Waiting for commentary...</div>
 
 <div id="batsmen"></div>
 
@@ -77,55 +77,55 @@ color:#ffd700;
 
 <script>
 
-/* CONNECT TO WEBSOCKET */
+/* CONNECT WEBSOCKET */
 
-const socket = new WebSocket("wss://cricket-data-server.onrender.com")
+const socket = new WebSocket(
+(location.protocol === "https:" ? "wss://" : "ws://") + location.host
+)
 
-socket.onopen = () => {
-
+socket.onopen = function(){
 console.log("Overlay connected")
-
 }
 
-socket.onmessage = (event) => {
+socket.onmessage = function(event){
+
+console.log("Message received:", event.data)
 
 const data = JSON.parse(event.data)
 
-console.log("Overlay received:",data)
-
-/* TEAMS */
-
-if(data.teams){
-document.getElementById("teams").innerText = data.teams
-}
-
-/* SCORE */
-
-if(data.score){
-document.getElementById("score").innerText = data.score
-}
-
-/* COMMENTARY */
+/* UPDATE COMMENTARY */
 
 if(data.commentary){
 document.getElementById("commentary").innerText = data.commentary
 }
 
-/* BATSMEN */
+/* UPDATE TEAMS */
+
+if(data.teams){
+document.getElementById("teams").innerText = data.teams
+}
+
+/* UPDATE SCORE */
+
+if(data.score){
+document.getElementById("score").innerText = data.score
+}
+
+/* UPDATE BATSMEN */
 
 if(data.batsmen){
 document.getElementById("batsmen").innerText =
 data.batsmen.join(" | ")
 }
 
-/* BOWLER */
+/* UPDATE BOWLER */
 
 if(data.bowler){
 document.getElementById("bowler").innerText =
 "Bowler: " + data.bowler
 }
 
-/* AUDIO */
+/* PLAY AUDIO */
 
 if(data.audio){
 
@@ -139,11 +139,11 @@ player.play().catch(()=>{})
 
 }
 
-socket.onerror = (err)=>{
+socket.onerror = function(err){
 console.log("Socket error:",err)
 }
 
-socket.onclose = ()=>{
+socket.onclose = function(){
 console.log("Socket closed")
 }
 
