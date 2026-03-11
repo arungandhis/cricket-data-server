@@ -84,6 +84,16 @@
       font-size: 12px;
       margin-left: 10px;
     }
+
+    #historyPanel {
+      background:#1a1a1a;
+      padding:15px;
+      border-radius:8px;
+      height:300px;
+      overflow-y:auto;
+      border:1px solid #333;
+      margin-top:20px;
+    }
   </style>
 </head>
 
@@ -99,6 +109,11 @@
 </div>
 
 <div id="matchList">Loading matches...</div>
+
+<h2>Commentary History</h2>
+<div id="historyPanel">
+  <p style="color:#888">Select a match to load commentary history...</p>
+</div>
 
 <script>
 let allMatches = [];
@@ -220,12 +235,36 @@ function renderMatches() {
   });
 }
 
+function showHistory(lines) {
+  const panel = document.getElementById("historyPanel");
+  panel.innerHTML = "";
+
+  if (!lines || lines.length === 0) {
+    panel.innerHTML = "<p>No commentary available.</p>";
+    return;
+  }
+
+  lines.forEach(line => {
+    const p = document.createElement("p");
+    p.textContent = "• " + line;
+    p.style.margin = "5px 0";
+    panel.appendChild(p);
+  });
+
+  panel.scrollTop = panel.scrollHeight;
+}
+
 async function startMatch(match) {
   await fetch("/start-match", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(match)
   });
+
+  const res = await fetch("/commentary?url=" + encodeURIComponent(match.url));
+  const data = await res.json();
+
+  showHistory(data.commentary);
 
   alert("Match started: " + match.match);
 }
