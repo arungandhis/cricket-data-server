@@ -4,6 +4,7 @@ const path = require("path");
 
 const { startWebSocket } = require("./websocket");
 const { fetchMatches, fetchCommentary } = require("./cricbuzzScraper");
+const { fetchHistoricalCommentary } = require("./commentaryScraper");
 const { startLiveMatch } = require("./matchEngine");
 
 const app = express();
@@ -32,18 +33,52 @@ app.get("/matches", async (req, res) => {
 
 /**
  * GET /commentary?url=<matchUrl>
- * Returns full commentary history for admin.html
+ * Returns latest commentary (used by admin.html)
  */
 app.get("/commentary", async (req, res) => {
   try {
     const url = req.query.url;
-    if (!url) return res.json({ commentary: [] });
+
+    if (!url) {
+      return res.json({ commentary: [] });
+    }
 
     const result = await fetchCommentary(url);
-    res.json(result);
+
+    res.json(result || { commentary: [] });
+
   } catch (err) {
     console.log("Error fetching commentary:", err.message);
     res.json({ commentary: [] });
+  }
+});
+
+/**
+ * GET /historical-commentary/:matchId
+ * Returns full match commentary for completed matches
+ */
+app.get("/historical-commentary/:matchId", async (req, res) => {
+  try {
+
+    const matchId = req.params.matchId;
+
+    console.log("Fetching historical commentary for match:", matchId);
+
+    const commentary = await fetchHistoricalCommentary(matchId);
+
+    res.json({
+      matchId,
+      balls: commentary
+    });
+
+  } catch (err) {
+
+    console.log("Historical commentary error:", err.message);
+
+    res.status(500).json({
+      error: "Failed to fetch historical commentary"
+    });
+
   }
 });
 
@@ -53,20 +88,37 @@ app.get("/commentary", async (req, res) => {
  */
 app.post("/start-match", async (req, res) => {
   try {
+
     const match = req.body;
-    console.log("Starting match:", match.match);
+
+    console.log("Starting match:", match.match || match.matchId);
 
     startLiveMatch(match);
 
     res.json({ status: "ok" });
+
   } catch (err) {
+
     console.log("Error starting match:", err.message);
+
     res.json({ status: "error" });
+
   }
+});
+
+/**
+ * Health check endpoint
+ */
+app.get("/health", (req, res) => {
+  res.json({
+    status: "running",
+    service: "cricket-data-server"
+  });
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
+
 server.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
