@@ -5,66 +5,20 @@ const generateAudio = require("./ttsEngine")
 let matchInterval = null
 let lastCommentary = null
 
-/* TEST MATCH */
-
-function startTestMatch(){
-
-console.log("TEST MATCH started")
-
-if(matchInterval){
-clearInterval(matchInterval)
-}
-
-matchInterval = setInterval(async ()=>{
-
-const commentary = "Kohli drives through covers for FOUR!"
-
-if(commentary === lastCommentary){
-return
-}
-
-lastCommentary = commentary
-
-try{
-
-const audio = await generateAudio(commentary)
-
-broadcastCommentary({
-teams:"India vs Australia",
-score:"145/3 (15.4)",
-commentary:commentary,
-batsmen:["Kohli 78 (44)","Rohit 45 (29)"],
-bowler:"Starc 3-0-24-1",
-audio:audio
-})
-
-}catch(err){
-
-console.log("Audio error:",err.message)
-
-broadcastCommentary({
-teams:"India vs Australia",
-score:"145/3 (15.4)",
-commentary:commentary,
-batsmen:["Kohli 78 (44)","Rohit 45 (29)"],
-bowler:"Starc 3-0-24-1"
-})
-
-}
-
-},8000)
-
-}
-
-/* LIVE MATCH */
-
 function startLiveMatch(match){
 
-console.log("LIVE MATCH started:",match.match)
+console.log("Launching LIVE MATCH engine")
 
 if(matchInterval){
 clearInterval(matchInterval)
 }
+
+/* BUILD CRICBUZZ URL */
+
+const matchUrl =
+"https://www.cricbuzz.com/live-cricket-scores/" + match.matchId
+
+console.log("LIVE MATCH started:", matchUrl)
 
 lastCommentary = null
 
@@ -72,7 +26,7 @@ matchInterval = setInterval(async ()=>{
 
 try{
 
-const data = await fetchCommentary(match.link)
+const data = await fetchCommentary(matchUrl)
 
 if(!data){
 console.log("No commentary data")
@@ -87,7 +41,7 @@ console.log("Skipping empty commentary")
 return
 }
 
-/* PREVENT DUPLICATE BALL */
+/* PREVENT DUPLICATES */
 
 if(commentary === lastCommentary){
 console.log("Duplicate commentary ignored")
@@ -105,21 +59,19 @@ console.log("Audio generation failed:",e.message)
 }
 
 broadcastCommentary({
-
-teams: match.match,
+teams: match.match || "Live Match",
 score: score || "",
 commentary: commentary,
 batsmen: data.batsmen || [],
 bowler: data.bowler || "",
 audio: audio
-
 })
 
-console.log("New ball commentary:",commentary)
+console.log("Broadcasting:", commentary)
 
 }catch(err){
 
-console.log("Match engine error:",err.message)
+console.log("Match engine error:", err.message)
 
 }
 
@@ -128,6 +80,5 @@ console.log("Match engine error:",err.message)
 }
 
 module.exports = {
-startTestMatch,
 startLiveMatch
 }
