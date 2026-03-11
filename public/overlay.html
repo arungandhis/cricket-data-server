@@ -3,52 +3,38 @@
 
 <head>
 
-<title>AI Cricket Broadcast</title>
+<title>Cricket Broadcast Overlay</title>
 
 <style>
 
 body{
 margin:0;
-background:#0b0b0b;
-font-family:Arial;
+background:black;
 color:white;
-}
-
-#scorebar{
-position:absolute;
-bottom:0;
-width:100%;
-background:#111;
-padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
+font-family:Arial;
 }
 
 #teams{
-font-size:24px;
+position:absolute;
+bottom:100px;
+width:100%;
+text-align:center;
+font-size:28px;
 font-weight:bold;
 }
 
 #score{
-font-size:32px;
-color:#00ffcc;
-}
-
-#commentaryBar{
 position:absolute;
-bottom:80px;
+bottom:70px;
 width:100%;
-background:#000;
-padding:15px;
 text-align:center;
-font-size:20px;
-color:#ffd700;
+font-size:36px;
+color:#00ffcc;
 }
 
 #batsmen{
 position:absolute;
-bottom:140px;
+bottom:40px;
 width:100%;
 text-align:center;
 font-size:18px;
@@ -56,10 +42,19 @@ font-size:18px;
 
 #bowler{
 position:absolute;
-bottom:170px;
+bottom:20px;
 width:100%;
 text-align:center;
 font-size:18px;
+}
+
+#commentary{
+position:absolute;
+bottom:140px;
+width:100%;
+text-align:center;
+font-size:22px;
+color:#ffd700;
 }
 
 </style>
@@ -68,35 +63,35 @@ font-size:18px;
 
 <body>
 
-<div id="bowler"></div>
+<div id="teams">Waiting for match...</div>
+
+<div id="score"></div>
+
+<div id="commentary">Waiting for commentary...</div>
 
 <div id="batsmen"></div>
 
-<div id="commentaryBar">
-Waiting for commentary...
-</div>
-
-<div id="scorebar">
-
-<div id="teams">
-Waiting for match
-</div>
-
-<div id="score">
-0/0
-</div>
-
-</div>
+<div id="bowler"></div>
 
 <audio id="audioPlayer"></audio>
 
 <script>
 
+/* CONNECT TO WEBSOCKET */
+
 const socket = new WebSocket("wss://cricket-data-server.onrender.com")
 
-socket.onmessage = function(event){
+socket.onopen = () => {
+
+console.log("Overlay connected")
+
+}
+
+socket.onmessage = (event) => {
 
 const data = JSON.parse(event.data)
+
+console.log("Overlay received:",data)
 
 /* TEAMS */
 
@@ -113,7 +108,7 @@ document.getElementById("score").innerText = data.score
 /* COMMENTARY */
 
 if(data.commentary){
-document.getElementById("commentaryBar").innerText = data.commentary
+document.getElementById("commentary").innerText = data.commentary
 }
 
 /* BATSMEN */
@@ -142,6 +137,14 @@ player.play().catch(()=>{})
 
 }
 
+}
+
+socket.onerror = (err)=>{
+console.log("Socket error:",err)
+}
+
+socket.onclose = ()=>{
+console.log("Socket closed")
 }
 
 </script>
