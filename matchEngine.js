@@ -15,8 +15,12 @@ clearInterval(matchInterval)
 
 /* BUILD CRICBUZZ URL */
 
+
 const matchUrl =
-"https://www.cricbuzz.com/live-cricket-scores/" + match.matchId
+"https://www.cricbuzz.com/live-cricket-scores/" +
+match.matchId +
+"/commentary"
+
 
 console.log("LIVE MATCH started:", matchUrl)
 
