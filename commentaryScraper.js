@@ -26,7 +26,7 @@ timeout:0
 
 /* WAIT FOR COMMENTARY TO LOAD */
 
-await page.waitForSelector(".cb-com-ln", {
+await page.waitForSelector(".cb-com-ln, .cb-col.cb-col-90", {
   timeout: 10000
 });
 
@@ -120,7 +120,7 @@ timeout:0
 
 /* WAIT FOR COMMENTARY TO LOAD */
 
-await page.waitForSelector(".cb-com-ln", {
+await page.waitForSelector(".cb-com-ln, .cb-col.cb-col-90", {
   timeout: 10000
 });
 
