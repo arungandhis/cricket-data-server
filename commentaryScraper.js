@@ -17,11 +17,21 @@ headless:true
 })
 
 const page = await browser.newPage()
+console.log("Opening match page:", url);
 
 await page.goto(url,{
-waitUntil:"networkidle2",
+waitUntil:"domcontentloaded",
 timeout:0
 })
+
+/* WAIT FOR COMMENTARY TO LOAD */
+
+await page.waitForSelector(".cb-com-ln", {
+  timeout: 10000
+});
+
+
+
 
 const data = await page.evaluate(()=>{
 
@@ -51,7 +61,7 @@ await browser.close()
 
 if(!data.commentary){
 
-console.log("Empty commentary from Puppeteer")
+console.log("SCRAPER FAILED — NO COMMENTARY FOUND")
 
 return null
 
