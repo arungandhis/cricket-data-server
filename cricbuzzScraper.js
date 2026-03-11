@@ -24,34 +24,45 @@ async function fetchMatches() {
 
     const matches = [];
 
-    // Find ALL match links across all Cricbuzz layouts
-    $("a.cb-lv-scrs-link").each((_, el) => {
+    // UNIVERSAL selector for all Cricbuzz layouts
+    $("a[href*='/live-cricket-scores/']").each((_, el) => {
       const matchLink = $(el).attr("href");
       if (!matchLink) return;
 
       const fullUrl = BASE + matchLink;
 
-      // Extract matchId from URL
-      const idMatch = matchLink.match(/\/(\d+)\//);
+      // Extract matchId
+      const idMatch = matchLink.match(/\/live-cricket-scores\/(\d+)\//);
       const matchId = idMatch ? idMatch[1] : null;
       if (!matchId) return;
 
-      // Extract match title
+      // Extract title
       const title =
         $(el).find(".cb-lv-scr-mtch-hdr").text().trim() ||
         $(el).text().trim() ||
         "Cricket Match";
 
-      // Extract status (live, stumps, result, etc.)
-      const status = $(el)
-        .closest(".cb-mtch-lst-li, .cb-col-100")
-        .find(".cb-lv-scrs-col")
-        .last()
-        .text()
-        .trim();
+      // Extract status
+      const status =
+        $(el)
+          .closest(".cb-mtch-lst-li, .cb-col-100, .cb-bg-white")
+          .find(".cb-lv-scrs-col")
+          .last()
+          .text()
+          .trim() || "";
+
+      // Extract series name
+      const series =
+        $(el)
+          .closest(".cb-mtch-lst, .cb-col-100")
+          .find(".cb-lv-scr-mtch-hdr")
+          .first()
+          .text()
+          .trim() || "";
 
       matches.push({
         match: title,
+        series,
         status,
         matchId,
         url: fullUrl,
