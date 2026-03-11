@@ -1,128 +1,119 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Live Overlay</title>
-
+  <title>Overlay</title>
   <style>
     body {
       margin: 0;
-      padding: 0;
-      background: black;
-      color: white;
+      background: transparent;
       font-family: Arial, sans-serif;
-      overflow: hidden;
+      color: white;
     }
 
     #container {
       position: absolute;
       bottom: 20px;
       left: 20px;
-      width: 95%;
-    }
-
-    #teams {
-      font-size: 32px;
-      font-weight: bold;
-      margin-bottom: 10px;
+      width: 600px;
+      padding: 15px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 10px;
     }
 
     #score {
       font-size: 28px;
-      margin-bottom: 15px;
-    }
-
-    #batsmen, #bowler {
-      font-size: 22px;
-      margin-bottom: 8px;
+      font-weight: bold;
+      margin-bottom: 10px;
     }
 
     #commentary {
-      font-size: 30px;
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+
+    #batsmen, #bowler {
+      font-size: 16px;
+      opacity: 0.8;
+    }
+
+    /* EVENT ANIMATIONS */
+    #eventBanner {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 20px 40px;
+      font-size: 40px;
       font-weight: bold;
-      margin-top: 20px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      border-radius: 10px;
+      display: none;
+      animation: pop 0.6s ease-out;
     }
 
-    /* Fade animation */
-    .fade {
-      animation: fadeIn 0.4s ease-in-out;
+    @keyframes pop {
+      0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+      100% { transform: translateX(-50%) scale(1); opacity: 1; }
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    .four { background: #007bff; }
+    .six { background: #8e44ad; }
+    .wicket { background: #e74c3c; }
   </style>
 </head>
 
 <body>
 
+<div id="eventBanner"></div>
+
 <div id="container">
-  <div id="teams"></div>
-  <div id="score"></div>
+  <div id="score">Waiting for score...</div>
+  <div id="commentary">Waiting for commentary...</div>
   <div id="batsmen"></div>
   <div id="bowler"></div>
-  <div id="commentary"></div>
 </div>
 
-<audio id="player" autoplay></audio>
+<audio id="audioPlayer"></audio>
 
 <script>
-let ws;
+const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+const ws = new WebSocket(`${wsProtocol}://${location.host}`);
 
-function connectWS() {
-  const protocol = location.protocol === "https:" ? "wss" : "ws";
-  ws = new WebSocket(`${protocol}://${location.host}`);
+ws.onmessage = (msg) => {
+  const data = JSON.parse(msg.data);
 
-  ws.onopen = () => console.log("WebSocket connected");
+  document.getElementById("score").textContent = data.score || "";
+  document.getElementById("commentary").textContent = data.commentary || "";
 
-  ws.onmessage = (msg) => {
-    const data = JSON.parse(msg.data);
+  document.getElementById("batsmen").innerHTML =
+    data.batsmen?.map(b => "• " + b).join("<br>") || "";
 
-    updateField("teams", data.teams);
-    updateField("score", data.score);
+  document.getElementById("bowler").textContent =
+    data.bowler ? "Bowler: " + data.bowler : "";
 
-    if (data.batsmen && data.batsmen.length > 0) {
-      updateField("batsmen", "Batsmen: " + data.batsmen.join(" | "));
-    }
-
-    if (data.bowler) {
-      updateField("bowler", "Bowler: " + data.bowler);
-    }
-
-    if (data.commentary) {
-      updateField("commentary", data.commentary, true);
-    }
-
-    if (data.audio) {
-      const player = document.getElementById("player");
-      player.src = data.audio + "?t=" + Date.now();
-      player.play().catch(() => {});
-    }
-  };
-
-  ws.onclose = () => {
-    console.log("WebSocket disconnected, retrying...");
-    setTimeout(connectWS, 2000);
-  };
-}
-
-function updateField(id, text, animate = false) {
-  const el = document.getElementById(id);
-  if (!el) return;
-
-  if (animate) {
-    el.classList.remove("fade");
-    void el.offsetWidth; // restart animation
-    el.classList.add("fade");
+  // AUDIO
+  if (data.audio) {
+    const audio = document.getElementById("audioPlayer");
+    audio.src = data.audio;
+    audio.play().catch(() => {});
   }
 
-  el.textContent = text;
-}
+  // EVENT ANIMATION
+  if (data.event) {
+    const banner = document.getElementById("eventBanner");
+    banner.textContent = data.event;
 
-connectWS();
+    banner.className =
+      data.event === "FOUR" ? "four" :
+      data.event === "SIX" ? "six" :
+      data.event === "WICKET" ? "wicket" : "";
+
+    banner.style.display = "block";
+
+    setTimeout(() => {
+      banner.style.display = "none";
+    }, 2000);
+  }
+};
 </script>
 
 </body>
