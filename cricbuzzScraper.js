@@ -3,15 +3,53 @@ const axios = require("axios");
 let lastKnownId = null;
 
 /**
- * Fetch live commentary first.
- * If no new commentary is available, fallback to full old commentary.
+ * Fetch list of matches from Cricbuzz
+ */
+async function fetchMatches() {
+  const url = "https://www.cricbuzz.com/api/matches";
+
+  const res = await axios.get(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept": "application/json"
+    }
+  });
+
+  const data = res.data;
+  const matches = [];
+
+  if (data.typeMatches) {
+    data.typeMatches.forEach(group => {
+      if (group.seriesMatches) {
+        group.seriesMatches.forEach(series => {
+          if (series.seriesAdWrapper && series.seriesAdWrapper.matches) {
+            series.seriesAdWrapper.matches.forEach(m => {
+              const info = m.matchInfo;
+
+              matches.push({
+                match: `${info.matchDesc} - ${info.team1.teamName} vs ${info.team2.teamName}`,
+                matchId: info.matchId,
+                link: info.matchId
+              });
+            });
+          }
+        });
+      }
+    });
+  }
+
+  return matches;
+}
+
+/**
+ * Fetch commentary (live first, fallback to old)
  */
 async function fetchCommentary(matchId) {
   try {
     const live = await fetchLiveCommentary(matchId);
 
     if (live && live.commentary.length > 0) {
-      return live; // Live commentary available
+      return live;
     }
 
     console.log("No new live commentary. Fetching old commentary...");
@@ -52,7 +90,6 @@ async function fetchLiveCommentary(matchId) {
     return null;
   }
 
-  // Update last known ID
   lastKnownId = latest.id;
 
   return {
@@ -85,5 +122,6 @@ async function fetchOldCommentary(matchId) {
 }
 
 module.exports = {
+  fetchMatches,
   fetchCommentary
 };
