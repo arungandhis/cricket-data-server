@@ -24,35 +24,38 @@ async function fetchMatches() {
 
     const matches = [];
 
-    $(".cb-mtch-lst").each((_, block) => {
-      const seriesName = $(block).find(".cb-lv-scr-mtch-hdr").first().text().trim();
+    // Find ALL match links across all Cricbuzz layouts
+    $("a.cb-lv-scrs-link").each((_, el) => {
+      const matchLink = $(el).attr("href");
+      if (!matchLink) return;
 
-      $(block)
-        .find(".cb-mtch-lst-li")
-        .each((__, el) => {
-          const linkEl = $(el).find("a.cb-lv-scrs-link");
-          const matchLink = linkEl.attr("href");
-          if (!matchLink) return;
+      const fullUrl = BASE + matchLink;
 
-          const fullUrl = BASE + matchLink;
+      // Extract matchId from URL
+      const idMatch = matchLink.match(/\/(\d+)\//);
+      const matchId = idMatch ? idMatch[1] : null;
+      if (!matchId) return;
 
-          const title =
-            $(el).find(".cb-lv-scr-mtch-hdr").first().text().trim() ||
-            linkEl.text().trim();
+      // Extract match title
+      const title =
+        $(el).find(".cb-lv-scr-mtch-hdr").text().trim() ||
+        $(el).text().trim() ||
+        "Cricket Match";
 
-          const status = $(el).find(".cb-lv-scrs-col").last().text().trim();
+      // Extract status (live, stumps, result, etc.)
+      const status = $(el)
+        .closest(".cb-mtch-lst-li, .cb-col-100")
+        .find(".cb-lv-scrs-col")
+        .last()
+        .text()
+        .trim();
 
-          const idMatch = matchLink.match(/\/(\d+)\//);
-          const matchId = idMatch ? idMatch[1] : matchLink;
-
-          matches.push({
-            match: title || "Cricket Match",
-            series: seriesName,
-            status,
-            matchId,
-            url: fullUrl,
-          });
-        });
+      matches.push({
+        match: title,
+        status,
+        matchId,
+        url: fullUrl,
+      });
     });
 
     return matches;
@@ -61,7 +64,6 @@ async function fetchMatches() {
     return [];
   }
 }
-
 /**
  * High-level: fetch commentary + rich info for a match
  * Accepts matchId or full URL
