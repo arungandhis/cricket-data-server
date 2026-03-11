@@ -1,59 +1,89 @@
-const axios = require("axios")
-const cheerio = require("cheerio")
+const axios = require("axios");
 
-async function fetchMatches(){
+let lastKnownId = null;
 
-try{
+/**
+ * Fetch live commentary first.
+ * If no new commentary is available, fallback to full old commentary.
+ */
+async function fetchCommentary(matchId) {
+  try {
+    const live = await fetchLiveCommentary(matchId);
 
-const response = await axios.get(
-"https://www.cricbuzz.com/cricket-match/live-scores",
-{
-headers:{
-"User-Agent":
-"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-"Accept-Language":"en-US,en;q=0.9"
-}
-}
-)
+    if (live && live.commentary.length > 0) {
+      return live; // Live commentary available
+    }
 
-const html = response.data
+    console.log("No new live commentary. Fetching old commentary...");
+    return await fetchOldCommentary(matchId);
 
-const $ = cheerio.load(html)
-
-let matches = []
-
-$("a").each((i,el)=>{
-
-const href = $(el).attr("href")
-
-if(href && href.includes("live-cricket-scores")){
-
-const match = $(el).text().trim()
-
-if(match.length > 5){
-
-matches.push({
-match: match,
-matchId: href.split("/")[2],
-link: "https://www.cricbuzz.com"+href
-})
-
+  } catch (err) {
+    console.log("Live commentary failed, loading old commentary:", err.message);
+    return await fetchOldCommentary(matchId);
+  }
 }
 
+/**
+ * Fetch LIVE commentary from Cricbuzz
+ */
+async function fetchLiveCommentary(matchId) {
+  const url = `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
+
+  const res = await axios.get(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept": "application/json"
+    }
+  });
+
+  const data = res.data;
+  const lines = data.comm_lines || [];
+
+  if (!lines.length) {
+    console.log("No commentary in API");
+    return null;
+  }
+
+  const latest = lines[0];
+
+  // No new commentary since last poll
+  if (latest.id === lastKnownId) {
+    console.log("No new commentary data");
+    return null;
+  }
+
+  // Update last known ID
+  lastKnownId = latest.id;
+
+  return {
+    type: "live",
+    latestId: latest.id,
+    commentary: lines.map(l => l.comm)
+  };
 }
 
-})
+/**
+ * Fetch FULL OLD commentary (works for completed matches)
+ */
+async function fetchOldCommentary(matchId) {
+  const url = `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
 
-return matches.slice(0,10)
+  const res = await axios.get(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept": "application/json"
+    }
+  });
 
-}catch(err){
+  const data = res.data;
+  const lines = data.comm_lines || [];
 
-console.log("Scraper error:",err.message)
-
-return []
-
+  return {
+    type: "old",
+    commentary: lines.map(l => l.comm)
+  };
 }
 
-}
-
-module.exports = fetchMatches
+module.exports = {
+  fetchCommentary
+};
