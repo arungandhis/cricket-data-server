@@ -1,167 +1,98 @@
-const puppeteer = require("puppeteer")
+const puppeteer = require("puppeteer");
 
-/*
-LIVE COMMENTARY SCRAPER
-Used by matchEngine.js
-*/
+async function fetchCommentary(url) {
 
-async function fetchCommentary(url){
+let browser;
 
-let browser
-
-try{
+try {
 
 browser = await puppeteer.launch({
-args:["--no-sandbox","--disable-setuid-sandbox"],
-headless:true
-})
-
-const page = await browser.newPage()
-console.log("Opening match page:", url);
-
-await page.goto(url,{
-waitUntil:"domcontentloaded",
-timeout:0
-})
-
-/* WAIT FOR COMMENTARY TO LOAD */
-
-await page.waitForSelector(".cb-com-ln, .cb-col.cb-col-90", {
-  timeout: 10000
+args: ["--no-sandbox", "--disable-setuid-sandbox"],
+headless: true
 });
 
+const page = await browser.newPage();
 
+console.log("Opening Cricbuzz page:", url);
 
+await page.goto(url, {
+waitUntil: "networkidle2",
+timeout: 0
+});
 
-const data = await page.evaluate(()=>{
+/* WAIT FOR COMMENTARY CONTAINER */
 
-const commEl = document.querySelector(".cb-com-ln")
+await page.waitForSelector("body");
 
-const scoreEl = document.querySelector(".cb-nav-tab.active")
+/* SCRAPE COMMENTARY LINES */
 
-let commentary = ""
-let score = ""
+const result = await page.evaluate(() => {
 
-if(commEl){
-commentary = commEl.innerText.trim()
+const commentaryLines = [];
+
+/* Cricbuzz commentary containers */
+
+const elements = document.querySelectorAll(
+".cb-com-ln, .cb-col.cb-col-90, .cb-col.cb-col-100"
+);
+
+elements.forEach(el => {
+const text = el.innerText.trim();
+if (text.length > 10) {
+commentaryLines.push(text);
 }
+});
 
-if(scoreEl){
-score = scoreEl.innerText.trim()
+/* GET SCORE */
+
+let score = "";
+
+const scoreEl = document.querySelector(".cb-text-live");
+
+if (scoreEl) {
+score = scoreEl.innerText.trim();
 }
 
 return {
-commentary,
+lines: commentaryLines,
 score
-}
+};
 
-})
-
-await browser.close()
-
-if(!data.commentary){
-
-console.log("SCRAPER FAILED — NO COMMENTARY FOUND")
-
-return null
-
-}
-
-return {
-commentary:data.commentary,
-score:data.score,
-batsmen:[],
-bowler:""
-}
-
-}catch(err){
-
-console.log("Puppeteer scraper error:",err.message)
-
-if(browser) await browser.close()
-
-return null
-
-}
-
-}
-
-/*
-HISTORICAL COMMENTARY SCRAPER
-Fetches full match commentary
-*/
-
-async function fetchHistoricalCommentary(matchId){
-
-let browser
-
-try{
-
-browser = await puppeteer.launch({
-args:["--no-sandbox","--disable-setuid-sandbox"],
-headless:true
-})
-
-const page = await browser.newPage()
-
-let allCommentary = []
-
-for(let i=0;i<50;i++){
-
-const url =
-`https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary/${i}`
-
-console.log("Scraping page:",url)
-
-await page.goto(url,{
-waitUntil:"domcontentloaded",
-timeout:0
-})
-
-/* WAIT FOR COMMENTARY TO LOAD */
-
-await page.waitForSelector(".cb-com-ln, .cb-col.cb-col-90", {
-  timeout: 10000
 });
 
+await browser.close();
 
-const comm = await page.evaluate(()=>{
+/* CHECK DATA */
 
-let lines = []
+if (!result.lines || result.lines.length === 0) {
 
-document.querySelectorAll(".cb-com-ln").forEach(el=>{
-lines.push(el.innerText.trim())
-})
+console.log("SCRAPER FAILED — NO COMMENTARY FOUND");
 
-return lines
-
-})
-
-if(comm.length === 0){
-break
-}
-
-allCommentary.push(...comm)
+return null;
 
 }
 
-await browser.close()
+/* LATEST BALL */
 
-return allCommentary
+const latest = result.lines[0];
 
-}catch(err){
+return {
+commentary: latest,
+score: result.score,
+batsmen: [],
+bowler: ""
+};
 
-console.log("Historical scraper error:",err.message)
+} catch (err) {
 
-if(browser) await browser.close()
+console.log("Commentary scraper error:", err.message);
 
-return []
+if (browser) await browser.close();
+
+return null;
 
 }
 
 }
 
-module.exports = {
-fetchCommentary,
-fetchHistoricalCommentary
-}
+module.exports = { fetchCommentary };
