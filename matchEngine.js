@@ -9,6 +9,7 @@ let lastCommentary = null;
  * Detect special events for overlay animations
  */
 function detectEvent(text) {
+
   const t = text.toLowerCase();
 
   if (t.includes("four") || t.includes("4 runs")) return "FOUR";
@@ -19,46 +20,44 @@ function detectEvent(text) {
 }
 
 /**
- * Start live match engine using scraped match URL
+ * Start live match engine
  */
 function startLiveMatch(match) {
-  console.log("Launching LIVE MATCH engine (HTML scraping)");
+
+  console.log("Launching LIVE MATCH engine");
 
   if (matchInterval) {
     clearInterval(matchInterval);
   }
 
-  //const matchUrl = match.url;
-  //console.log("MATCH URL:", matchUrl);
-  
-  const matchUrl =
-"https://www.cricbuzz.com/live-cricket-scores/" +
-match.matchId +
-"/commentary"
+  const matchId = match.matchId;
 
-console.log("MATCH URL:", matchUrl)
-  
+  console.log("MATCH ID:", matchId);
 
   lastCommentary = null;
 
   matchInterval = setInterval(async () => {
-    try {
-      // 1️⃣ Fetch commentary + score + batsmen + bowler
-      const result = await fetchCommentary(matchUrl);
 
-      if (!result || !result.commentary || result.commentary.length === 0) {
+    try {
+
+      /* 1️⃣ FETCH COMMENTARY */
+
+      const result = await fetchCommentary(matchId);
+
+      if (!result || !result.commentary) {
         console.log("No commentary data");
         return;
       }
 
-      const latestLine = result.commentary[0];
+      const latestLine = result.commentary.trim();
 
-      if (!latestLine || latestLine.trim() === "") {
+      if (!latestLine) {
         console.log("Skipping empty commentary");
         return;
       }
 
-      // Prevent duplicates
+      /* 2️⃣ PREVENT DUPLICATES */
+
       if (latestLine === lastCommentary) {
         console.log("Duplicate commentary ignored");
         return;
@@ -66,18 +65,22 @@ console.log("MATCH URL:", matchUrl)
 
       lastCommentary = latestLine;
 
-      // 2️⃣ Detect special events (FOUR, SIX, WICKET)
+      /* 3️⃣ DETECT EVENT */
+
       const event = detectEvent(latestLine);
 
-      // 3️⃣ Generate audio
+      /* 4️⃣ GENERATE AUDIO */
+
       let audio = null;
+
       try {
         audio = await generateAudio(latestLine);
       } catch (e) {
         console.log("Audio generation failed:", e.message);
       }
 
-      // 4️⃣ Broadcast to overlay
+      /* 5️⃣ BROADCAST */
+
       broadcastCommentary({
         teams: match.match || "Cricket Match",
         score: result.score || "",
@@ -85,15 +88,18 @@ console.log("MATCH URL:", matchUrl)
         batsmen: result.batsmen || [],
         bowler: result.bowler || "",
         audio,
-        event, // NEW: overlay can animate based on this
+        event
       });
 
       console.log("Broadcast:", latestLine);
 
     } catch (err) {
+
       console.log("Match engine error:", err.message);
+
     }
-  }, 10000);
+
+  }, 8000);
 
   return matchInterval;
 }
