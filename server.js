@@ -19,45 +19,71 @@ app.use(express.static(path.join(__dirname, "public")));
 
 /**
  * GET /matches
- * Returns list of scraped matches
+ * Returns list of matches for admin UI
  */
 app.get("/matches", async (req, res) => {
+
   try {
+
     const matches = await fetchMatches();
+
     res.json(matches);
+
   } catch (err) {
+
     console.log("Error fetching matches:", err.message);
+
     res.json([]);
+
   }
+
 });
 
 /**
- * GET /commentary?url=<matchUrl>
- * Returns latest commentary (used by admin.html)
+ * GET /commentary?matchId=xxxx
+ * Returns latest commentary
  */
 app.get("/commentary", async (req, res) => {
-  try {
-    const url = req.query.url;
 
-    if (!url) {
+  try {
+
+    const matchId = req.query.matchId;
+
+    if (!matchId) {
       return res.json({ commentary: [] });
     }
 
-    const result = await fetchCommentary(url);
+    console.log("Fetching commentary for match:", matchId);
 
-    res.json(result || { commentary: [] });
+    const result = await fetchCommentary(matchId);
+
+    if (!result) {
+      return res.json({ commentary: [] });
+    }
+
+    res.json({
+      commentary: [result.commentary],
+      score: result.score || "",
+      batsmen: result.batsmen || [],
+      bowler: result.bowler || ""
+    });
 
   } catch (err) {
+
     console.log("Error fetching commentary:", err.message);
+
     res.json({ commentary: [] });
+
   }
+
 });
 
 /**
  * GET /historical-commentary/:matchId
- * Returns full match commentary for completed matches
+ * Returns full commentary for completed matches
  */
 app.get("/historical-commentary/:matchId", async (req, res) => {
+
   try {
 
     const matchId = req.params.matchId;
@@ -80,13 +106,15 @@ app.get("/historical-commentary/:matchId", async (req, res) => {
     });
 
   }
+
 });
 
 /**
  * POST /start-match
- * Starts the match engine for selected match
+ * Starts the live match engine
  */
 app.post("/start-match", async (req, res) => {
+
   try {
 
     const match = req.body;
@@ -104,21 +132,26 @@ app.post("/start-match", async (req, res) => {
     res.json({ status: "error" });
 
   }
+
 });
 
 /**
- * Health check endpoint
+ * Health check
  */
 app.get("/health", (req, res) => {
+
   res.json({
     status: "running",
     service: "cricket-data-server"
   });
+
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
+
   console.log("Server running on port", PORT);
+
 });
