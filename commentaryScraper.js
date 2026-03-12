@@ -13,58 +13,79 @@ headless: true
 
 const page = await browser.newPage();
 
-console.log("Opening Cricbuzz page:", url);
+console.log("Opening match:", url);
+
+/* CAPTURE API RESPONSES */
+
+let commentaryData = null;
+
+page.on("response", async (response) => {
+
+try {
+
+const reqUrl = response.url();
+
+/* Cricbuzz commentary API */
+
+if (reqUrl.includes("commentary")) {
+
+const json = await response.json().catch(()=>null);
+
+if (json) {
+commentaryData = json;
+}
+
+}
+
+} catch (err) {}
+
+});
+
+/* OPEN PAGE */
 
 await page.goto(url, {
 waitUntil: "networkidle2",
 timeout: 0
 });
 
-/* WAIT FOR COMMENTARY CONTAINER */
+/* WAIT FOR API TO LOAD */
 
-await page.waitForSelector("body");
-
-/* SCRAPE COMMENTARY LINES */
-
-const result = await page.evaluate(() => {
-
-const commentaryLines = [];
-
-/* Cricbuzz commentary containers */
-
-const elements = document.querySelectorAll(
-".cb-com-ln, .cb-col.cb-col-90, .cb-col.cb-col-100"
-);
-
-elements.forEach(el => {
-const text = el.innerText.trim();
-if (text.length > 10) {
-commentaryLines.push(text);
-}
-});
-
-/* GET SCORE */
-
-let score = "";
-
-const scoreEl = document.querySelector(".cb-text-live");
-
-if (scoreEl) {
-score = scoreEl.innerText.trim();
-}
-
-return {
-lines: commentaryLines,
-score
-};
-
-});
+await new Promise(resolve => setTimeout(resolve, 5000));
 
 await browser.close();
 
-/* CHECK DATA */
+/* VALIDATE */
 
-if (!result.lines || result.lines.length === 0) {
+if (!commentaryData) {
+
+console.log("SCRAPER FAILED — NO COMMENTARY API DATA");
+
+return null;
+
+}
+
+/* EXTRACT COMMENTARY */
+
+let latestCommentary = "";
+let score = "";
+
+try {
+
+const comm = commentaryData.commentaryList || [];
+
+if (comm.length > 0) {
+latestCommentary = comm[0].commText || "";
+}
+
+score =
+(commentaryData.matchHeader &&
+commentaryData.matchHeader.state) || "";
+
+} catch (err) {}
+
+/* CHECK */
+
+if (!latestCommentary) {
 
 console.log("SCRAPER FAILED — NO COMMENTARY FOUND");
 
@@ -72,13 +93,9 @@ return null;
 
 }
 
-/* LATEST BALL */
-
-const latest = result.lines[0];
-
 return {
-commentary: latest,
-score: result.score,
+commentary: latestCommentary,
+score: score,
 batsmen: [],
 bowler: ""
 };
