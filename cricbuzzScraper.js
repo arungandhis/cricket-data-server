@@ -17,51 +17,52 @@ FETCH LIVE MATCHES
 Used by /matches endpoint
 ---------------------------------------
 */
+const axios = require("axios");
 
+/*
+Fetch matches from Cricbuzz homepage
+*/
 async function fetchMatches() {
 
   try {
 
-    const url =
-      "https://www.cricbuzz.com/api/cricket-match/live-matches";
+    const url = "https://www.cricbuzz.com/cricket-match/live-scores";
 
-    console.log("Fetching live matches...");
+    console.log("Fetching matches from Cricbuzz...");
 
-    const response = await axios.get(url, { headers });
+    const response = await axios.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+      }
+    });
 
-    const data = response.data;
-
-    if (!data || !data.typeMatches) {
-      console.log("No matches found");
-      return [];
-    }
+    const html = response.data;
 
     const matches = [];
 
-    data.typeMatches.forEach(type => {
+    const regex = /live-cricket-scores\/(\d+)\/([^"]+)/g;
 
-      type.seriesMatches.forEach(series => {
+    let match;
 
-        if (!series.seriesAdWrapper) return;
+    while ((match = regex.exec(html)) !== null) {
 
-        const matchList = series.seriesAdWrapper.matches || [];
+      const matchId = match[1];
 
-        matchList.forEach(m => {
+      let matchName = match[2]
+        .replace(/-/g, " ")
+        .replace(/live-cricket-score.*/i, "")
+        .trim();
 
-          const info = m.matchInfo;
-
-          if (!info) return;
-
-          matches.push({
-            match: info.team1.teamName + " vs " + info.team2.teamName,
-            matchId: info.matchId.toString()
-          });
-
-        });
-
+      matches.push({
+        match: matchName,
+        matchId: matchId,
+        status: "LIVE"
       });
 
-    });
+    }
+
+    console.log("Matches found:", matches.length);
 
     return matches;
 
@@ -74,6 +75,9 @@ async function fetchMatches() {
   }
 
 }
+
+module.exports = { fetchMatches };
+
 
 /*
 ---------------------------------------
