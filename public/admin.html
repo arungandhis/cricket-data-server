@@ -255,18 +255,22 @@ function showHistory(lines) {
 }
 
 async function startMatch(match) {
+
   await fetch("/start-match", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(match)
   });
 
-  const res = await fetch("/commentary?url=" + encodeURIComponent(match.url));
+  // Load commentary history using matchId
+  const res = await fetch("/commentary?matchId=" + match.matchId);
+
   const data = await res.json();
 
   showHistory(data.commentary);
 
   alert("Match started: " + match.match);
+
 }
 
 loadMatches();
