@@ -17,7 +17,7 @@ FETCH LIVE MATCHES
 Used by /matches endpoint
 ---------------------------------------
 */
-const axios = require("axios");
+
 
 /*
 Fetch matches from Cricbuzz homepage
