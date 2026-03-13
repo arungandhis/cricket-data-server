@@ -1,5 +1,5 @@
-const axios = require("axios");
-const cheerio = require("cheerio");
+const axios = require("axios")
+const cheerio = require("cheerio")
 
 /*
 HEADERS
@@ -8,7 +8,7 @@ const headers = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
   Referer: "https://www.cricbuzz.com/"
-};
+}
 
 /*
 ---------------------------------------
@@ -19,46 +19,46 @@ async function fetchMatches() {
 
   try {
 
-    const url = "https://www.cricbuzz.com/cricket-match/live-scores";
+    const url = "https://www.cricbuzz.com/cricket-match/live-scores"
 
-    console.log("Fetching matches from Cricbuzz...");
+    console.log("Fetching matches from Cricbuzz...")
 
-    const response = await axios.get(url, { headers });
+    const response = await axios.get(url, { headers })
 
-    const html = response.data;
+    const html = response.data
 
-    const matches = [];
+    const matches = []
 
-    const regex = /live-cricket-scores\/(\d+)\/([^"]+)/g;
+    const regex = /live-cricket-scores\/(\d+)\/([^"]+)/g
 
-    let match;
+    let match
 
     while ((match = regex.exec(html)) !== null) {
 
-      const matchId = match[1];
+      const matchId = match[1]
 
       let name = match[2]
         .replace(/-/g, " ")
         .replace(/live-cricket-score.*/i, "")
-        .trim();
+        .trim()
 
       matches.push({
         match: name,
         matchId: matchId,
         status: "LIVE"
-      });
+      })
 
     }
 
-    console.log("Matches found:", matches.length);
+    console.log("Matches found:", matches.length)
 
-    return matches;
+    return matches
 
   } catch (err) {
 
-    console.log("Match fetch error:", err.message);
+    console.log("Match fetch error:", err.message)
 
-    return [];
+    return []
 
   }
 
@@ -74,33 +74,33 @@ async function fetchCricbuzzCommentary(matchId) {
   try {
 
     const url =
-      `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
+      `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`
 
-    console.log("Trying Cricbuzz API:", url);
+    console.log("Trying Cricbuzz API:", url)
 
-    const response = await axios.get(url, { headers });
+    const response = await axios.get(url, { headers })
 
-    const data = response.data;
+    const data = response.data
 
     if (!data || !data.commentaryList || data.commentaryList.length === 0) {
-      console.log("No Cricbuzz API commentary");
-      return null;
+      console.log("No Cricbuzz API commentary")
+      return null
     }
 
-    const latestBall = data.commentaryList[0];
+    const latestBall = data.commentaryList[0]
 
     return {
       commentary: latestBall.commText || "",
       score: data.matchHeader?.state || "",
       batsmen: [],
       bowler: ""
-    };
+    }
 
   } catch (err) {
 
-    console.log("Cricbuzz API failed:", err.message);
+    console.log("Cricbuzz API failed:", err.message)
 
-    return null;
+    return null
 
   }
 
@@ -108,7 +108,7 @@ async function fetchCricbuzzCommentary(matchId) {
 
 /*
 ---------------------------------------
-CRICBUZZ HTML FALLBACK
+CRICBUZZ HTML COMMENTARY
 ---------------------------------------
 */
 async function fetchCricbuzzHtml(matchId) {
@@ -116,19 +116,19 @@ async function fetchCricbuzzHtml(matchId) {
   try {
 
     const url =
-      `https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary`;
+      `https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary`
 
-    console.log("Trying Cricbuzz HTML:", url);
+    console.log("Trying Cricbuzz HTML:", url)
 
-    const response = await axios.get(url, { headers });
+    const response = await axios.get(url, { headers })
 
-    const $ = cheerio.load(response.data);
+    const $ = cheerio.load(response.data)
 
-    const text = $(".cb-com-ln").first().text().trim();
+    const text = $(".cb-com-ln").first().text().trim()
 
     if (!text) {
-      console.log("No Cricbuzz HTML commentary");
-      return null;
+      console.log("No Cricbuzz HTML commentary")
+      return null
     }
 
     return {
@@ -136,13 +136,60 @@ async function fetchCricbuzzHtml(matchId) {
       score: "",
       batsmen: [],
       bowler: ""
-    };
+    }
 
   } catch (err) {
 
-    console.log("Cricbuzz HTML fallback failed:", err.message);
+    console.log("Cricbuzz HTML fallback failed:", err.message)
 
-    return null;
+    return null
+
+  }
+
+}
+
+/*
+---------------------------------------
+CRICBUZZ MOBILE COMMENTARY
+MOST RELIABLE
+---------------------------------------
+*/
+async function fetchCricbuzzMobile(matchId) {
+
+  try {
+
+    const url =
+      `https://m.cricbuzz.com/cricket-commentary/${matchId}`
+
+    console.log("Trying Cricbuzz mobile:", url)
+
+    const response = await axios.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)"
+      }
+    })
+
+    const $ = cheerio.load(response.data)
+
+    const text = $(".commtext").first().text().trim()
+
+    if (!text) {
+      console.log("No Cricbuzz mobile commentary")
+      return null
+    }
+
+    return {
+      commentary: text,
+      score: "",
+      batsmen: [],
+      bowler: ""
+    }
+
+  } catch (err) {
+
+    console.log("Cricbuzz mobile fallback failed:", err.message)
+
+    return null
 
   }
 
@@ -158,23 +205,23 @@ async function fetchEspnHtml() {
   try {
 
     const url =
-      "https://www.espncricinfo.com/live-cricket-score";
+      "https://www.espncricinfo.com/live-cricket-score"
 
-    console.log("Trying ESPN HTML fallback");
+    console.log("Trying ESPN HTML fallback")
 
     const response = await axios.get(url, {
       headers: {
         "User-Agent": headers["User-Agent"]
       }
-    });
+    })
 
-    const $ = cheerio.load(response.data);
+    const $ = cheerio.load(response.data)
 
-    const text = $(".ds-text-tight-m").first().text().trim();
+    const text = $(".ds-text-tight-m").first().text().trim()
 
     if (!text) {
-      console.log("No ESPN HTML commentary");
-      return null;
+      console.log("No ESPN commentary")
+      return null
     }
 
     return {
@@ -182,13 +229,13 @@ async function fetchEspnHtml() {
       score: "",
       batsmen: [],
       bowler: ""
-    };
+    }
 
   } catch (err) {
 
-    console.log("ESPN HTML fallback failed:", err.message);
+    console.log("ESPN HTML fallback failed:", err.message)
 
-    return null;
+    return null
 
   }
 
@@ -202,24 +249,28 @@ MAIN COMMENTARY FUNCTION
 async function fetchCommentary(matchId) {
 
   // 1️⃣ Cricbuzz API
-  let result = await fetchCricbuzzCommentary(matchId);
-  if (result && result.commentary) return result;
+  let result = await fetchCricbuzzCommentary(matchId)
+  if (result && result.commentary) return result
 
   // 2️⃣ Cricbuzz HTML
-  result = await fetchCricbuzzHtml(matchId);
-  if (result && result.commentary) return result;
+  result = await fetchCricbuzzHtml(matchId)
+  if (result && result.commentary) return result
 
-  // 3️⃣ ESPN HTML fallback
-  result = await fetchEspnHtml();
-  if (result && result.commentary) return result;
+  // 3️⃣ Cricbuzz Mobile
+  result = await fetchCricbuzzMobile(matchId)
+  if (result && result.commentary) return result
 
-  console.log("All commentary sources failed");
+  // 4️⃣ ESPN fallback
+  result = await fetchEspnHtml()
+  if (result && result.commentary) return result
 
-  return null;
+  console.log("All commentary sources failed")
+
+  return null
 
 }
 
 module.exports = {
   fetchMatches,
   fetchCommentary
-};
+}
