@@ -1,280 +1,538 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin – Match Selector</title>
+<title>Admin – Match Selector</title>
+<style>
+body{
+font-family:Arial, sans-serif;
+background:#111;
+color:#fff;
+margin:0;
+padding:20px;
+}
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #fff;
-      margin: 0;
-      padding: 20px;
-    }
+h1{
+margin-bottom:20px;
+}
 
-    h1 {
-      margin-bottom: 20px;
-    }
+#filters{
+margin-bottom:20px;
+}
 
-    #filters {
-      margin-bottom: 20px;
-    }
+button.filter{
+background:#333;
+color:white;
+border:none;
+padding:10px 15px;
+margin-right:10px;
+cursor:pointer;
+border-radius:5px;
+}
 
-    button.filter {
-      background: #333;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      margin-right: 10px;
-      cursor: pointer;
-      border-radius: 5px;
-    }
+button.filter.active{
+background:#007bff;
+}
 
-    button.filter.active {
-      background: #007bff;
-    }
+.match-card{
+background:#1a1a1a;
+padding:15px;
+margin-bottom:15px;
+border-radius:8px;
+display:flex;
+align-items:center;
+cursor:pointer;
+border:1px solid #333;
+}
 
-    .match-card {
-      background: #1a1a1a;
-      padding: 15px;
-      margin-bottom: 15px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      border: 1px solid #333;
-    }
+.match-card:hover{
+background:#222;
+}
 
-    .match-card:hover {
-      background: #222;
-    }
+.team-logo{
+width:50px;
+height:50px;
+border-radius:50%;
+background:#444;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:22px;
+margin-right:15px;
+}
 
-    .team-logo {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: #444;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      margin-right: 15px;
-    }
+.match-info{
+flex:1;
+}
 
-    .match-info {
-      flex: 1;
-    }
+.series{
+font-size:14px;
+color:#aaa;
+}
 
-    .series {
-      font-size: 14px;
-      color: #aaa;
-    }
+.status{
+font-size:14px;
+margin-top:5px;
+color:#0f0;
+}
 
-    .status {
-      font-size: 14px;
-      margin-top: 5px;
-      color: #0f0;
-    }
+.badge{
+display:inline-block;
+padding:3px 8px;
+background:#444;
+border-radius:4px;
+font-size:12px;
+margin-left:10px;
+}
 
-    .badge {
-      display: inline-block;
-      padding: 3px 8px;
-      background: #444;
-      border-radius: 4px;
-      font-size: 12px;
-      margin-left: 10px;
-    }
-
-    #historyPanel {
-      background:#1a1a1a;
-      padding:15px;
-      border-radius:8px;
-      height:300px;
-      overflow-y:auto;
-      border:1px solid #333;
-      margin-top:20px;
-    }
-  </style>
+#historyPanel{
+background:#1a1a1a;
+padding:15px;
+border-radius:8px;
+height:300px;
+overflow-y:auto;
+border:1px solid #333;
+margin-top:20px;
+}
+</style>
 </head>
-
 <body>
-
 <h1>Match Control Panel</h1>
-
 <div id="filters">
-  <button class="filter active" onclick="setFilter('all')">ALL</button>
-  <button class="filter" onclick="setFilter('live')">LIVE ONLY</button>
-  <button class="filter" onclick="setFilter('completed')">COMPLETED ONLY</button>
-  <button class="filter" onclick="setFilter('upcoming')">UPCOMING ONLY</button>
+<button class="filter active" onclick="setFilter('all')">ALL</button>
+<button class="filter" onclick="setFilter('live')">LIVE ONLY</button>
+<button class="filter" onclick="setFilter('completed')">COMPLETED ONLY</button>
+<button class="filter" onclick="setFilter('upcoming')">UPCOMING ONLY</button>
 </div>
-
 <div id="matchList">Loading matches...</div>
-
 <h2>Commentary History</h2>
 <div id="historyPanel">
-  <p style="color:#888">Select a match to load commentary history...</p>
+<p style="color:#888">Select a match to load commentary history...</p>
+</div>
+<script>
+
+let allMatches=[]
+let currentFilter="all"
+
+function setFilter(type){
+
+currentFilter=type
+
+document.querySelectorAll(".filter").forEach(btn=>btn.classList.remove("active"))
+
+document.querySelector(`button[onclick="setFilter('${type}')"]`).classList.add("active")
+
+renderMatches()
+}
+
+function getTeamLogo(teamName){
+
+const letter=teamName?teamName.charAt(0).toUpperCase():"?"
+
+return `<div class="team-logo">${letter}</div>`
+}
+
+function getMatchType(title){
+
+title=title.toLowerCase()
+
+if(title.includes("t20"))return"T20"
+if(title.includes("odi"))return"ODI"
+if(title.includes("test"))return"TEST"
+
+return""
+}
+
+function isLive(status){
+
+const s=status.toLowerCase()
+
+return(
+s.includes("live")||
+s.includes("day")||
+s.includes("session")||
+s.includes("stumps")||
+s.includes("drinks")||
+s.includes("break")||
+s.includes("tea")||
+s.includes("lunch")
+)
+}
+
+function isCompleted(status){
+
+const s=status.toLowerCase()
+
+return(
+s.includes("won")||
+s.includes("lost")||
+s.includes("result")||
+s.includes("tie")||
+s.includes("draw")
+)
+}
+
+function isUpcoming(status){
+
+const s=status.toLowerCase()
+
+return(
+s.includes("yet to begin")||
+s.includes("starts in")||
+s.includes("start at")||
+s.includes("starts at")||
+s.includes("upcoming")||
+s.includes("preview")||
+s.includes("toss at")
+)
+}
+
+async function loadMatches(){
+
+const res=await fetch("/matches")
+
+const matches=await res.json()
+
+allMatches=matches
+
+renderMatches()
+}
+
+function renderMatches(){
+
+const container=document.getElementById("matchList")
+
+container.innerHTML=""
+
+let filtered=allMatches
+
+if(currentFilter==="live"){
+filtered=filtered.filter(m=>isLive(m.status))
+}
+
+if(currentFilter==="completed"){
+filtered=filtered.filter(m=>isCompleted(m.status))
+}
+
+if(currentFilter==="upcoming"){
+filtered=filtered.filter(m=>isUpcoming(m.status))
+}
+
+if(filtered.length===0){
+container.innerHTML="<p>No matches found.</p>"
+return
+}
+
+filtered.forEach(match=>{
+
+const teams=match.match.split(" - ")[1]||match.match
+
+const[team1,team2]=teams.split(" vs ")
+
+const matchType=getMatchType(match.match)
+
+const card=document.createElement("div")
+
+card.className="match-card"
+
+card.onclick=()=>startMatch(match)
+
+card.innerHTML=`
+${getTeamLogo(team1)}
+${getTeamLogo(team2)}
+<div class="match-info">
+<div class="series">${match.series||""}</div>
+<div>
+<strong>${match.match}</strong>
+${matchType?`<span class="badge">${matchType}</span>`:""}
+</div>
+<div class="status">${match.status}</div>
+</div>
+`
+
+container.appendChild(card)
+
+})
+}
+
+function showHistory(lines){
+
+const panel=document.getElementById("historyPanel")
+
+panel.innerHTML=""
+
+if(!lines||lines.length===0){
+panel.innerHTML="<p>No commentary available.</p>"
+return
+}
+
+lines.forEach(line=>{
+
+const p=document.createElement("p")
+
+if(typeof line==="string"){
+p.textContent="• "+line
+}else{
+p.textContent="• "+(line.text||JSON.stringify(line))
+}
+
+p.style.margin="5px 0"
+
+panel.appendChild(p)
+
+})
+
+panel.scrollTop=panel.scrollHeight
+}
+
+async function startMatch(match){
+
+await fetch("/start-match",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(match)
+})
+
+let data
+
+if(isCompleted(match.status)){
+
+const res=await fetch("/historical-commentary/"+match.matchId)
+
+const json=await res.json()
+
+data={
+commentary:json.balls||[]
+}
+
+}else{
+
+const res=await fetch("/commentary?matchId="+match.matchId)
+
+data=await res.json()
+
+}
+
+showHistory(data.commentary)
+
+alert("Match started: "+match.match)
+
+}
+
+loadMatches()
+
+</script>
+<script>
+
+let allMatches=[]
+let currentFilter="all"
+
+function setFilter(type){
+
+currentFilter=type
+
+document.querySelectorAll(".filter").forEach(btn=>btn.classList.remove("active"))
+
+document.querySelector(`button[onclick="setFilter('${type}')"]`).classList.add("active")
+
+renderMatches()
+}
+
+function getTeamLogo(teamName){
+
+const letter=teamName?teamName.charAt(0).toUpperCase():"?"
+
+return `<div class="team-logo">${letter}</div>`
+}
+
+function getMatchType(title){
+
+title=title.toLowerCase()
+
+if(title.includes("t20"))return"T20"
+if(title.includes("odi"))return"ODI"
+if(title.includes("test"))return"TEST"
+
+return""
+}
+
+function isLive(status){
+
+const s=status.toLowerCase()
+
+return(
+s.includes("live")||
+s.includes("day")||
+s.includes("session")||
+s.includes("stumps")||
+s.includes("drinks")||
+s.includes("break")||
+s.includes("tea")||
+s.includes("lunch")
+)
+}
+
+function isCompleted(status){
+
+const s=status.toLowerCase()
+
+return(
+s.includes("won")||
+s.includes("lost")||
+s.includes("result")||
+s.includes("tie")||
+s.includes("draw")
+)
+}
+
+function isUpcoming(status){
+
+const s=status.toLowerCase()
+
+return(
+s.includes("yet to begin")||
+s.includes("starts in")||
+s.includes("start at")||
+s.includes("starts at")||
+s.includes("upcoming")||
+s.includes("preview")||
+s.includes("toss at")
+)
+}
+
+async function loadMatches(){
+
+const res=await fetch("/matches")
+
+const matches=await res.json()
+
+allMatches=matches
+
+renderMatches()
+}
+
+function renderMatches(){
+
+const container=document.getElementById("matchList")
+
+container.innerHTML=""
+
+let filtered=allMatches
+
+if(currentFilter==="live"){
+filtered=filtered.filter(m=>isLive(m.status))
+}
+
+if(currentFilter==="completed"){
+filtered=filtered.filter(m=>isCompleted(m.status))
+}
+
+if(currentFilter==="upcoming"){
+filtered=filtered.filter(m=>isUpcoming(m.status))
+}
+
+if(filtered.length===0){
+container.innerHTML="<p>No matches found.</p>"
+return
+}
+
+filtered.forEach(match=>{
+
+const teams=match.match.split(" - ")[1]||match.match
+
+const[team1,team2]=teams.split(" vs ")
+
+const matchType=getMatchType(match.match)
+
+const card=document.createElement("div")
+
+card.className="match-card"
+
+card.onclick=()=>startMatch(match)
+
+card.innerHTML=`
+${getTeamLogo(team1)}
+${getTeamLogo(team2)}
+<div class="match-info">
+<div class="series">${match.series||""}</div>
+<div>
+<strong>${match.match}</strong>
+${matchType?`<span class="badge">${matchType}</span>`:""}
+</div>
+<div class="status">${match.status}</div>
 </div>
 
-<script>
-let allMatches = [];
-let currentFilter = "all";
 
-function setFilter(type) {
-  currentFilter = type;
+container.appendChild(card)
 
-  document.querySelectorAll(".filter").forEach(btn => btn.classList.remove("active"));
-  document.querySelector(`button[onclick="setFilter('${type}')"]`).classList.add("active");
-
-  renderMatches();
+})
 }
 
-function getTeamLogo(teamName) {
-  const letter = teamName ? teamName.charAt(0).toUpperCase() : "?";
-  return `<div class="team-logo">${letter}</div>`;
+function showHistory(lines){
+
+const panel=document.getElementById("historyPanel")
+
+panel.innerHTML=""
+
+if(!lines||lines.length===0){
+panel.innerHTML="<p>No commentary available.</p>"
+return
 }
 
-function getMatchType(title) {
-  title = title.toLowerCase();
-  if (title.includes("t20")) return "T20";
-  if (title.includes("odi")) return "ODI";
-  if (title.includes("test")) return "TEST";
-  return "";
+lines.forEach(line=>{
+
+const p=document.createElement("p")
+
+if(typeof line==="string"){
+p.textContent="• "+line
+}else{
+p.textContent="• "+(line.text||JSON.stringify(line))
 }
 
-function isLive(status) {
-  const s = status.toLowerCase();
-  return (
-    s.includes("live") ||
-    s.includes("day") ||
-    s.includes("session") ||
-    s.includes("stumps") ||
-    s.includes("drinks") ||
-    s.includes("break") ||
-    s.includes("tea") ||
-    s.includes("lunch")
-  );
+p.style.margin="5px 0"
+
+panel.appendChild(p)
+
+})
+
+panel.scrollTop=panel.scrollHeight
 }
 
-function isCompleted(status) {
-  const s = status.toLowerCase();
-  return (
-    s.includes("won") ||
-    s.includes("lost") ||
-    s.includes("result") ||
-    s.includes("tie") ||
-    s.includes("draw")
-  );
+async function startMatch(match){
+
+await fetch("/start-match",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(match)
+})
+
+let data
+
+if(isCompleted(match.status)){
+
+const res=await fetch("/historical-commentary/"+match.matchId)
+
+const json=await res.json()
+
+data={
+commentary:json.balls||[]
 }
 
-function isUpcoming(status) {
-  const s = status.toLowerCase();
-  return (
-    s.includes("yet to begin") ||
-    s.includes("starts in") ||
-    s.includes("start at") ||
-    s.includes("starts at") ||
-    s.includes("upcoming") ||
-    s.includes("preview") ||
-    s.includes("toss at")
-  );
-}
+}else{
 
-async function loadMatches() {
-  const res = await fetch("/matches");
-  const matches = await res.json();
-  allMatches = matches;
-  renderMatches();
-}
+const res=await fetch("/commentary?matchId="+match.matchId)
 
-function renderMatches() {
-  const container = document.getElementById("matchList");
-  container.innerHTML = "";
-
-  let filtered = allMatches;
-
-  if (currentFilter === "live") {
-    filtered = filtered.filter(m => isLive(m.status));
-  }
-
-  if (currentFilter === "completed") {
-    filtered = filtered.filter(m => isCompleted(m.status));
-  }
-
-  if (currentFilter === "upcoming") {
-    filtered = filtered.filter(m => isUpcoming(m.status));
-  }
-
-  if (filtered.length === 0) {
-    container.innerHTML = "<p>No matches found.</p>";
-    return;
-  }
-
-  filtered.forEach(match => {
-    const teams = match.match.split(" - ")[1] || match.match;
-    const [team1, team2] = teams.split(" vs ");
-
-    const matchType = getMatchType(match.match);
-
-    const card = document.createElement("div");
-    card.className = "match-card";
-    card.onclick = () => startMatch(match);
-
-    card.innerHTML = `
-      ${getTeamLogo(team1)}
-      ${getTeamLogo(team2)}
-      <div class="match-info">
-        <div class="series">${match.series || ""}</div>
-        <div><strong>${match.match}</strong>
-          ${matchType ? `<span class="badge">${matchType}</span>` : ""}
-        </div>
-        <div class="status">${match.status}</div>
-      </div>
-    `;
-
-    container.appendChild(card);
-  });
-}
-
-function showHistory(lines) {
-  const panel = document.getElementById("historyPanel");
-  panel.innerHTML = "";
-
-  if (!lines || lines.length === 0) {
-    panel.innerHTML = "<p>No commentary available.</p>";
-    return;
-  }
-
-  lines.forEach(line => {
-    const p = document.createElement("p");
-    p.textContent = "• " + line;
-    p.style.margin = "5px 0";
-    panel.appendChild(p);
-  });
-
-  panel.scrollTop = panel.scrollHeight;
-}
-
-async function startMatch(match) {
-
-  await fetch("/start-match", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(match)
-  });
-
-  // Load commentary history using matchId
-  const res = await fetch("/commentary?matchId=" + match.matchId);
-
-  const data = await res.json();
-
-  showHistory(data.commentary);
-
-  alert("Match started: " + match.match);
+data=await res.json()
 
 }
 
-loadMatches();
+showHistory(data.commentary)
+
+alert("Match started: "+match.match)
+
+}
+
+loadMatches()
+
 </script>
-
 </body>
 </html>
