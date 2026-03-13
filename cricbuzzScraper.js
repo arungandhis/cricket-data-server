@@ -18,8 +18,8 @@ async function fetchMatches() {
 
   try {
 
-    const url =
-      "https://www.cricbuzz.com/api/cricket-match/live-matches";
+    const url ="https://www.cricbuzz.com/cricket-match/live-scores"
+      
 
     const res = await axios.get(url, { headers });
 
