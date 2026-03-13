@@ -1,59 +1,58 @@
-const { getBrowser } = require("./browser")
+const axios = require("axios")
+const cheerio = require("cheerio")
+
+const headers = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+}
 
 /*
-FETCH MATCHES
+FETCH MATCH LIST
 */
 async function fetchMatches() {
 
   try {
 
-    const browser = await getBrowser()
-    const page = await browser.newPage()
+    const url =
+      "https://www.cricbuzz.com/api/html/cricket-match/live-scores"
 
-    await page.goto(
-      "https://www.cricbuzz.com/cricket-match/live-scores",
-      { waitUntil: "networkidle2" }
-    )
+    const response = await axios.get(url, { headers })
 
-    const matches = await page.evaluate(() => {
+    const html = response.data
 
-      const links = document.querySelectorAll("a[href*='live-cricket-scores']")
+    const $ = cheerio.load(html)
 
-      const results = []
+    const matches = []
 
-      links.forEach(link => {
+    $("a[href*='live-cricket-scores']").each((i, el) => {
 
-        const href = link.getAttribute("href")
+      const href = $(el).attr("href")
 
-        if (!href) return
+      if (!href) return
 
-        const parts = href.split("/")
+      const parts = href.split("/")
 
-        const matchId = parts[2]
+      const matchId = parts[2]
 
-        const name = parts[3]?.replace(/-/g, " ")
+      const name = parts[3]
+        ?.replace(/-/g, " ")
+        .replace("live-cricket-score", "")
 
-        if (matchId && name) {
+      if (matchId && name) {
 
-          results.push({
-            match: name,
-            matchId,
-            status: "LIVE"
-          })
+        matches.push({
+          match: name.trim(),
+          matchId,
+          status: "LIVE"
+        })
 
-        }
-
-      })
-
-      return results.slice(0, 10)
+      }
 
     })
 
-    await page.close()
-
     console.log("Matches found:", matches.length)
 
-    return matches
+    return matches.slice(0,10)
 
   } catch (err) {
 
@@ -72,37 +71,26 @@ async function fetchCommentary(matchId) {
 
   try {
 
-    const browser = await getBrowser()
-    const page = await browser.newPage()
-
     const url =
-      `https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary`
+      `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`
 
-    console.log("Opening commentary:", url)
+    const response = await axios.get(url, { headers })
 
-    await page.goto(url, { waitUntil: "networkidle2" })
+    const data = response.data
 
-    const commentary = await page.evaluate(() => {
+    if (!data || !data.commentaryList || data.commentaryList.length === 0) {
 
-      const el = document.querySelector(".cb-com-ln")
-
-      return el ? el.innerText.trim() : ""
-
-    })
-
-    await page.close()
-
-    if (!commentary) {
-
-      console.log("No commentary found")
+      console.log("No commentary available")
 
       return null
 
     }
 
+    const latest = data.commentaryList[0]
+
     return {
-      commentary,
-      score: "",
+      commentary: latest.commText || "",
+      score: data.matchHeader?.state || "",
       batsmen: [],
       bowler: ""
     }
