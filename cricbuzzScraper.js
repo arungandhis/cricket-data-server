@@ -1,5 +1,4 @@
 const axios = require("axios")
-const cheerio = require("cheerio")
 
 const headers = {
   "User-Agent":
@@ -7,52 +6,55 @@ const headers = {
 }
 
 /*
-FETCH MATCH LIST
+---------------------------------------
+FETCH LIVE MATCHES
+---------------------------------------
 */
 async function fetchMatches() {
 
   try {
 
     const url =
-      "https://www.cricbuzz.com/api/html/cricket-match/live-scores"
+      "https://www.cricbuzz.com/api/cricket-match/live-scores"
+
+    console.log("Fetching matches from Cricbuzz API")
 
     const response = await axios.get(url, { headers })
 
-    const html = response.data
+    const data = response.data
 
-    const $ = cheerio.load(html)
+    if (!data || !data.typeMatches) {
+      return []
+    }
 
     const matches = []
 
-    $("a[href*='live-cricket-scores']").each((i, el) => {
+    data.typeMatches.forEach(type => {
 
-      const href = $(el).attr("href")
+      type.seriesMatches.forEach(series => {
 
-      if (!href) return
+        const match = series.seriesAdWrapper?.matches?.[0]
 
-      const parts = href.split("/")
+        if (!match) return
 
-      const matchId = parts[2]
-
-      const name = parts[3]
-        ?.replace(/-/g, " ")
-        .replace("live-cricket-score", "")
-
-      if (matchId && name) {
+        const matchInfo = match.matchInfo
 
         matches.push({
-          match: name.trim(),
-          matchId,
-          status: "LIVE"
+          match:
+            matchInfo.team1.teamName +
+            " vs " +
+            matchInfo.team2.teamName,
+          matchId: matchInfo.matchId,
+          status: matchInfo.status
         })
 
-      }
+      })
 
     })
 
     console.log("Matches found:", matches.length)
 
-    return matches.slice(0,10)
+    return matches
 
   } catch (err) {
 
@@ -65,7 +67,9 @@ async function fetchMatches() {
 }
 
 /*
+---------------------------------------
 FETCH COMMENTARY
+---------------------------------------
 */
 async function fetchCommentary(matchId) {
 
@@ -74,16 +78,14 @@ async function fetchCommentary(matchId) {
     const url =
       `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`
 
+    console.log("Fetching commentary:", matchId)
+
     const response = await axios.get(url, { headers })
 
     const data = response.data
 
     if (!data || !data.commentaryList || data.commentaryList.length === 0) {
-
-      console.log("No commentary available")
-
       return null
-
     }
 
     const latest = data.commentaryList[0]
