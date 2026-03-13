@@ -4,6 +4,7 @@
  "main": "server.js",
  "scripts": {
    "start": "node server.js",
+       "build": "bash render-build.sh",
     "postinstall": "node node_modules/puppeteer/install.mjs"
  },
  "dependencies": {
