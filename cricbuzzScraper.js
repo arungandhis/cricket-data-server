@@ -1,120 +1,114 @@
-const axios = require("axios")
-const cheerio = require("cheerio");
+const axios = require("axios");
 
 const headers = {
   "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-}
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+  Referer: "https://www.cricbuzz.com/",
+  Accept: "application/json"
+};
+
 
 /*
 ---------------------------------------
-FETCH MATCHES
+FETCH MATCH LIST
 ---------------------------------------
 */
+
 async function fetchMatches() {
 
   try {
 
-    const url = "https://www.cricbuzz.com/cricket-match/live-scores"
+    const url =
+      "https://www.cricbuzz.com/api/cricket-match/live-matches";
 
-    console.log("Fetching matches page")
+    const res = await axios.get(url, { headers });
 
-    const response = await axios.get(url, { headers })
+    const matches = [];
 
-    const html = response.data
+    const data = res.data.typeMatches || [];
 
-    const matches = []
+    data.forEach(type => {
 
-    const regex = /live-cricket-scores\/(\d+)\/([^"]+)/g
+      type.seriesMatches.forEach(series => {
 
-    let match
+        const seriesName =
+          series.seriesAdWrapper?.seriesName || "";
 
-    while ((match = regex.exec(html)) !== null) {
+        series.seriesAdWrapper?.matches?.forEach(m => {
 
-      const matchId = match[1]
+          const info = m.matchInfo;
 
-      let name = match[2]
-        .replace(/-/g, " ")
-        .replace(/live-cricket-score.*/i, "")
-        .trim()
+          const team1 = info.team1.teamName;
+          const team2 = info.team2.teamName;
 
-      matches.push({
-        match: name,
-        matchId: matchId,
-        status: "LIVE"
-      })
+          matches.push({
+            match: `${team1} vs ${team2}`,
+            series: seriesName,
+            matchId: info.matchId,
+            status: info.status
+          });
 
-    }
+        });
 
-    // remove duplicates
-    const uniqueMatches = [
-      ...new Map(matches.map(m => [m.matchId, m])).values()
-    ]
+      });
 
-    console.log("Matches found:", uniqueMatches.length)
+    });
 
-    return uniqueMatches.slice(0,10)
+    console.log("Matches found:", matches.length);
+
+    return matches;
 
   } catch (err) {
 
-    console.log("Match fetch error:", err.message)
+    console.log("Match fetch error:", err.message);
 
-    return []
+    return [];
 
   }
 
 }
+
+
 /*
-FETCH COMMENTARY FROM HTML PAGE
+---------------------------------------
+FETCH LIVE COMMENTARY
+---------------------------------------
 */
+
 async function fetchCommentary(matchId) {
 
   try {
 
     const url =
-      `https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary`;
+      `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
 
-    console.log("Fetching commentary page:", url);
+    console.log("Fetching commentary:", url);
 
-    const response = await axios.get(url, { headers });
+    const res = await axios.get(url, { headers });
 
-    const html = response.data;
+    const list = res.data.commentaryList || [];
 
-    const $ = cheerio.load(html);
+    if (list.length === 0) {
 
-    const commentaryLines = [];
-
-    /*
-    Cricbuzz commentary container
-    */
-
-    $(".cb-col.cb-col-100.cb-comm-lines").each((i, el) => {
-
-      const text = $(el).text().trim();
-
-      if (text && text.length > 10) {
-        commentaryLines.push(text);
-      }
-
-    });
-
-    if (commentaryLines.length === 0) {
-
-      console.log("No commentary found on page");
+      console.log("No commentary returned");
 
       return null;
 
     }
 
-    const latest = commentaryLines[0];
-
-    console.log("Latest commentary:", latest);
+    const latest = list[0];
 
     return {
-      commentary: latest,
-      score: "",
+
+      commentary: latest.commText || "",
+
+      score:
+        res.data.matchHeader?.status || "",
+
       batsmen: [],
+
       bowler: ""
+
     };
 
   } catch (err) {
@@ -128,7 +122,52 @@ async function fetchCommentary(matchId) {
 }
 
 
+/*
+---------------------------------------
+FETCH HISTORICAL COMMENTARY
+---------------------------------------
+*/
+
+async function fetchHistoricalCommentary(matchId) {
+
+  try {
+
+    const url =
+      `https://www.cricbuzz.com/api/cricket-match/full-commentary/${matchId}`;
+
+    const res = await axios.get(url, { headers });
+
+    const balls = [];
+
+    const data = res.data.commentaryList || [];
+
+    data.forEach(ball => {
+
+      if (ball.commText) {
+
+        balls.push(ball.commText);
+
+      }
+
+    });
+
+    console.log("Historical balls:", balls.length);
+
+    return balls;
+
+  } catch (err) {
+
+    console.log("Historical commentary error:", err.message);
+
+    return [];
+
+  }
+
+}
+
+
 module.exports = {
   fetchMatches,
-  fetchCommentary
-}
+  fetchCommentary,
+  fetchHistoricalCommentary
+};
