@@ -1,21 +1,13 @@
-const puppeteer = require("puppeteer")
+const { getBrowser } = require("./browser")
 
 /*
----------------------------------------
-FETCH MATCH LIST
----------------------------------------
+FETCH MATCHES
 */
 async function fetchMatches() {
 
-  let browser
-
   try {
 
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
-    })
-
+    const browser = await getBrowser()
     const page = await browser.newPage()
 
     await page.goto(
@@ -45,7 +37,7 @@ async function fetchMatches() {
 
           results.push({
             match: name,
-            matchId: matchId,
+            matchId,
             status: "LIVE"
           })
 
@@ -57,6 +49,8 @@ async function fetchMatches() {
 
     })
 
+    await page.close()
+
     console.log("Matches found:", matches.length)
 
     return matches
@@ -67,36 +61,24 @@ async function fetchMatches() {
 
     return []
 
-  } finally {
-
-    if (browser) await browser.close()
-
   }
 
 }
 
 /*
----------------------------------------
 FETCH COMMENTARY
----------------------------------------
 */
 async function fetchCommentary(matchId) {
 
-  let browser
-
   try {
 
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
-    })
-
+    const browser = await getBrowser()
     const page = await browser.newPage()
 
     const url =
       `https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary`
 
-    console.log("Opening commentary page:", url)
+    console.log("Opening commentary:", url)
 
     await page.goto(url, { waitUntil: "networkidle2" })
 
@@ -107,6 +89,8 @@ async function fetchCommentary(matchId) {
       return el ? el.innerText.trim() : ""
 
     })
+
+    await page.close()
 
     if (!commentary) {
 
@@ -128,10 +112,6 @@ async function fetchCommentary(matchId) {
     console.log("Commentary fetch error:", err.message)
 
     return null
-
-  } finally {
-
-    if (browser) await browser.close()
 
   }
 
