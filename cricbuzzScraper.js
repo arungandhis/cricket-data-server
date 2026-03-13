@@ -4,7 +4,6 @@ const axios = require("axios");
 HEADERS
 Helps avoid bot blocking
 */
-
 const headers = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
@@ -16,7 +15,6 @@ const headers = {
 FETCH MATCH LIST
 ---------------------------------------
 */
-
 async function fetchMatches() {
 
   try {
@@ -71,7 +69,6 @@ async function fetchMatches() {
 CRICBUZZ COMMENTARY
 ---------------------------------------
 */
-
 async function fetchCricbuzzCommentary(matchId) {
 
   try {
@@ -111,40 +108,36 @@ async function fetchCricbuzzCommentary(matchId) {
 
 /*
 ---------------------------------------
-ESPN FALLBACK
+ESPN FALLBACK COMMENTARY
 ---------------------------------------
 */
-
-async function fetchEspnCommentary() {
+async function fetchEspnCommentary(matchId) {
 
   try {
 
     const url =
-      "https://site.web.api.espn.com/apis/v2/sports/cricket/scoreboard";
+      `https://hs-consumer-api.espncricinfo.com/v1/pages/match/comments?matchId=${matchId}`;
 
-    console.log("Trying ESPN fallback");
+    console.log("Trying ESPN fallback:", url);
 
-    const response = await axios.get(url, { headers });
+    const response = await axios.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
+    });
 
-    const events = response.data.events;
+    const comments = response.data.comments;
 
-    if (!events || events.length === 0) {
-      console.log("No ESPN events");
+    if (!comments || comments.length === 0) {
+      console.log("No ESPN commentary");
       return null;
     }
 
-    const event = events[0];
-
-    const status = event.status?.type?.detail || "";
-
-    const teams =
-      event.competitions?.[0]?.competitors
-        ?.map(t => t.team.displayName)
-        .join(" vs ");
+    const latest = comments[0];
 
     return {
-      commentary: status,
-      score: teams,
+      commentary: latest.text || "",
+      score: latest.score || "",
       batsmen: [],
       bowler: ""
     };
@@ -164,7 +157,6 @@ async function fetchEspnCommentary() {
 MAIN COMMENTARY FUNCTION
 ---------------------------------------
 */
-
 async function fetchCommentary(matchId) {
 
   let result = await fetchCricbuzzCommentary(matchId);
@@ -175,7 +167,7 @@ async function fetchCommentary(matchId) {
 
   console.log("Falling back to ESPN Cricinfo");
 
-  result = await fetchEspnCommentary();
+  result = await fetchEspnCommentary(matchId);
 
   if (result) {
     return result;
@@ -187,6 +179,9 @@ async function fetchCommentary(matchId) {
 
 }
 
+/*
+EXPORT FUNCTIONS
+*/
 module.exports = {
   fetchMatches,
   fetchCommentary
