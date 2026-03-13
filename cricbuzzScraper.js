@@ -7,54 +7,52 @@ const headers = {
 
 /*
 ---------------------------------------
-FETCH LIVE MATCHES
+FETCH MATCHES
 ---------------------------------------
 */
 async function fetchMatches() {
 
   try {
 
-    const url =
-      "https://www.cricbuzz.com/api/cricket-match/live-scores"
+    const url = "https://www.cricbuzz.com/cricket-match/live-scores"
 
-    console.log("Fetching matches from Cricbuzz API")
+    console.log("Fetching matches page")
 
     const response = await axios.get(url, { headers })
 
-    const data = response.data
-
-    if (!data || !data.typeMatches) {
-      return []
-    }
+    const html = response.data
 
     const matches = []
 
-    data.typeMatches.forEach(type => {
+    const regex = /live-cricket-scores\/(\d+)\/([^"]+)/g
 
-      type.seriesMatches.forEach(series => {
+    let match
 
-        const match = series.seriesAdWrapper?.matches?.[0]
+    while ((match = regex.exec(html)) !== null) {
 
-        if (!match) return
+      const matchId = match[1]
 
-        const matchInfo = match.matchInfo
+      let name = match[2]
+        .replace(/-/g, " ")
+        .replace(/live-cricket-score.*/i, "")
+        .trim()
 
-        matches.push({
-          match:
-            matchInfo.team1.teamName +
-            " vs " +
-            matchInfo.team2.teamName,
-          matchId: matchInfo.matchId,
-          status: matchInfo.status
-        })
-
+      matches.push({
+        match: name,
+        matchId: matchId,
+        status: "LIVE"
       })
 
-    })
+    }
 
-    console.log("Matches found:", matches.length)
+    // remove duplicates
+    const uniqueMatches = [
+      ...new Map(matches.map(m => [m.matchId, m])).values()
+    ]
 
-    return matches
+    console.log("Matches found:", uniqueMatches.length)
+
+    return uniqueMatches.slice(0,10)
 
   } catch (err) {
 
