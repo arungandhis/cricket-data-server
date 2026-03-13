@@ -1,8 +1,8 @@
 const axios = require("axios");
+const cheerio = require("cheerio");
 
 /*
 HEADERS
-Helps avoid bot blocking
 */
 const headers = {
   "User-Agent":
@@ -66,7 +66,7 @@ async function fetchMatches() {
 
 /*
 ---------------------------------------
-CRICBUZZ COMMENTARY
+CRICBUZZ API COMMENTARY
 ---------------------------------------
 */
 async function fetchCricbuzzCommentary(matchId) {
@@ -76,14 +76,14 @@ async function fetchCricbuzzCommentary(matchId) {
     const url =
       `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`;
 
-    console.log("Trying Cricbuzz commentary:", url);
+    console.log("Trying Cricbuzz API:", url);
 
     const response = await axios.get(url, { headers });
 
     const data = response.data;
 
     if (!data || !data.commentaryList || data.commentaryList.length === 0) {
-      console.log("No Cricbuzz commentary");
+      console.log("No Cricbuzz API commentary");
       return null;
     }
 
@@ -98,7 +98,7 @@ async function fetchCricbuzzCommentary(matchId) {
 
   } catch (err) {
 
-    console.log("Cricbuzz commentary failed:", err.message);
+    console.log("Cricbuzz API failed:", err.message);
 
     return null;
 
@@ -108,54 +108,85 @@ async function fetchCricbuzzCommentary(matchId) {
 
 /*
 ---------------------------------------
-ESPN FALLBACK COMMENTARY
+CRICBUZZ HTML FALLBACK
 ---------------------------------------
 */
-async function fetchEspnCommentary(matchId) {
+async function fetchCricbuzzHtml(matchId) {
 
   try {
 
     const url =
-      `https://hs-consumer-api.espncricinfo.com/v1/pages/match/comments?matchId=${matchId}`;
+      `https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary`;
 
-    console.log("Trying ESPN fallback:", url);
+    console.log("Trying Cricbuzz HTML:", url);
 
-    
-    
-    const response = await axios.get(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.espncricinfo.com/",
-        "Origin": "https://www.espncricinfo.com"
-      },
-      timeout: 10000
-    });
+    const response = await axios.get(url, { headers });
 
- 
-    
+    const $ = cheerio.load(response.data);
 
-    const comments = response.data.comments;
+    const text = $(".cb-com-ln").first().text().trim();
 
-    if (!comments || comments.length === 0) {
-      console.log("No ESPN commentary");
+    if (!text) {
+      console.log("No Cricbuzz HTML commentary");
       return null;
     }
 
-    const latest = comments[0];
-
     return {
-      commentary: latest.text || "",
-      score: latest.score || "",
+      commentary: text,
+      score: "",
       batsmen: [],
       bowler: ""
     };
 
   } catch (err) {
 
-    console.log("ESPN fallback failed:", err.message);
+    console.log("Cricbuzz HTML fallback failed:", err.message);
+
+    return null;
+
+  }
+
+}
+
+/*
+---------------------------------------
+ESPN HTML FALLBACK
+---------------------------------------
+*/
+async function fetchEspnHtml() {
+
+  try {
+
+    const url =
+      "https://www.espncricinfo.com/live-cricket-score";
+
+    console.log("Trying ESPN HTML fallback");
+
+    const response = await axios.get(url, {
+      headers: {
+        "User-Agent": headers["User-Agent"]
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+
+    const text = $(".ds-text-tight-m").first().text().trim();
+
+    if (!text) {
+      console.log("No ESPN HTML commentary");
+      return null;
+    }
+
+    return {
+      commentary: text,
+      score: "",
+      batsmen: [],
+      bowler: ""
+    };
+
+  } catch (err) {
+
+    console.log("ESPN HTML fallback failed:", err.message);
 
     return null;
 
@@ -170,29 +201,24 @@ MAIN COMMENTARY FUNCTION
 */
 async function fetchCommentary(matchId) {
 
+  // 1️⃣ Cricbuzz API
   let result = await fetchCricbuzzCommentary(matchId);
+  if (result && result.commentary) return result;
 
-  if (result && result.commentary) {
-    return result;
-  }
+  // 2️⃣ Cricbuzz HTML
+  result = await fetchCricbuzzHtml(matchId);
+  if (result && result.commentary) return result;
 
-  console.log("Falling back to ESPN Cricinfo");
+  // 3️⃣ ESPN HTML fallback
+  result = await fetchEspnHtml();
+  if (result && result.commentary) return result;
 
-  result = await fetchEspnCommentary(matchId);
-
-  if (result) {
-    return result;
-  }
-
-  console.log("No commentary available");
+  console.log("All commentary sources failed");
 
   return null;
 
 }
 
-/*
-EXPORT FUNCTIONS
-*/
 module.exports = {
   fetchMatches,
   fetchCommentary
