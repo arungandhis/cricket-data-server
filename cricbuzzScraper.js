@@ -63,34 +63,43 @@ async function fetchMatches() {
   }
 
 }
-
 /*
----------------------------------------
-FETCH COMMENTARY
----------------------------------------
+FETCH COMMENTARY FROM HTML PAGE
 */
 async function fetchCommentary(matchId) {
 
   try {
 
     const url =
-      `https://www.cricbuzz.com/api/cricket-match/commentary/${matchId}`
+      `https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary`
 
-    console.log("Fetching commentary:", matchId)
+    console.log("Fetching commentary page:", url)
 
     const response = await axios.get(url, { headers })
 
-    const data = response.data
+    const $ = cheerio.load(response.data)
 
-    if (!data || !data.commentaryList || data.commentaryList.length === 0) {
+    const commentaryLines = []
+
+    $(".cb-com-ln").each((i, el) => {
+
+      const text = $(el).text().trim()
+
+      if (text) commentaryLines.push(text)
+
+    })
+
+    if (commentaryLines.length === 0) {
+
+      console.log("No commentary found on page")
+
       return null
+
     }
 
-    const latest = data.commentaryList[0]
-
     return {
-      commentary: latest.commText || "",
-      score: data.matchHeader?.state || "",
+      commentary: commentaryLines[0],
+      score: "",
       batsmen: [],
       bowler: ""
     }
