@@ -3,7 +3,13 @@ const http = require("http");
 const path = require("path");
 
 const { startWebSocket } = require("./websocket");
-const { fetchMatches, fetchCommentary } = require("./cricbuzzScraper");
+
+
+const cricbuzzScraper = require("./cricbuzzScraper");
+
+const fetchMatches = cricbuzzScraper.fetchMatches;
+const fetchCommentary = cricbuzzScraper.fetchCommentary;
+
 const { fetchHistoricalCommentary } = require("./commentaryScraper");
 const { startLiveMatch } = require("./matchEngine");
 
