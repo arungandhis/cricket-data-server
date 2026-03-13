@@ -1,13 +1,18 @@
 const puppeteer = require("puppeteer")
 
 /*
+---------------------------------------
 FETCH MATCH LIST
+---------------------------------------
 */
 async function fetchMatches() {
 
+  let browser
+
   try {
 
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
+      headless: "new",
       args: ["--no-sandbox", "--disable-setuid-sandbox"]
     })
 
@@ -28,6 +33,8 @@ async function fetchMatches() {
 
         const href = link.getAttribute("href")
 
+        if (!href) return
+
         const parts = href.split("/")
 
         const matchId = parts[2]
@@ -46,11 +53,9 @@ async function fetchMatches() {
 
       })
 
-      return results.slice(0,10)
+      return results.slice(0, 10)
 
     })
-
-    await browser.close()
 
     console.log("Matches found:", matches.length)
 
@@ -62,18 +67,27 @@ async function fetchMatches() {
 
     return []
 
+  } finally {
+
+    if (browser) await browser.close()
+
   }
 
 }
 
 /*
+---------------------------------------
 FETCH COMMENTARY
+---------------------------------------
 */
 async function fetchCommentary(matchId) {
 
+  let browser
+
   try {
 
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
+      headless: "new",
       args: ["--no-sandbox", "--disable-setuid-sandbox"]
     })
 
@@ -93,8 +107,6 @@ async function fetchCommentary(matchId) {
       return el ? el.innerText.trim() : ""
 
     })
-
-    await browser.close()
 
     if (!commentary) {
 
@@ -116,6 +128,10 @@ async function fetchCommentary(matchId) {
     console.log("Commentary fetch error:", err.message)
 
     return null
+
+  } finally {
+
+    if (browser) await browser.close()
 
   }
 
