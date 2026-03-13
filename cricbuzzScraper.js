@@ -120,11 +120,22 @@ async function fetchEspnCommentary(matchId) {
 
     console.log("Trying ESPN fallback:", url);
 
+    
+    
     const response = await axios.get(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0"
-      }
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.espncricinfo.com/",
+        "Origin": "https://www.espncricinfo.com"
+      },
+      timeout: 10000
     });
+
+ 
+    
 
     const comments = response.data.comments;
 
