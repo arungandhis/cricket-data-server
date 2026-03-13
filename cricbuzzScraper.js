@@ -72,48 +72,61 @@ async function fetchCommentary(matchId) {
   try {
 
     const url =
-      `https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary`
+      `https://www.cricbuzz.com/live-cricket-scores/${matchId}/commentary`;
 
-    console.log("Fetching commentary page:", url)
+    console.log("Fetching commentary page:", url);
 
-    const response = await axios.get(url, { headers })
+    const response = await axios.get(url, { headers });
 
-    const $ = cheerio.load(response.data)
+    const html = response.data;
 
-    const commentaryLines = []
+    const $ = cheerio.load(html);
 
-    $(".cb-com-ln").each((i, el) => {
+    const commentaryLines = [];
 
-      const text = $(el).text().trim()
+    /*
+    Cricbuzz commentary container
+    */
 
-      if (text) commentaryLines.push(text)
+    $(".cb-col.cb-col-100.cb-comm-lines").each((i, el) => {
 
-    })
+      const text = $(el).text().trim();
+
+      if (text && text.length > 10) {
+        commentaryLines.push(text);
+      }
+
+    });
 
     if (commentaryLines.length === 0) {
 
-      console.log("No commentary found on page")
+      console.log("No commentary found on page");
 
-      return null
+      return null;
 
     }
 
+    const latest = commentaryLines[0];
+
+    console.log("Latest commentary:", latest);
+
     return {
-      commentary: commentaryLines[0],
+      commentary: latest,
       score: "",
       batsmen: [],
       bowler: ""
-    }
+    };
 
   } catch (err) {
 
-    console.log("Commentary fetch error:", err.message)
+    console.log("Commentary fetch error:", err.message);
 
-    return null
+    return null;
 
   }
 
 }
+
 
 module.exports = {
   fetchMatches,
